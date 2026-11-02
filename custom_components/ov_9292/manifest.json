@@ -1,0 +1,14 @@
+{
+  "domain": "ov_9292",
+  "name": "9292 OV",
+  "codeowners": [
+    "@vinnie1234"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/vinnie1234/HomeAssistant9292",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/vinnie1234/HomeAssistant9292/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

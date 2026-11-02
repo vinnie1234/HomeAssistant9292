@@ -1,0 +1,90 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up 9292 public transport",
+        "description": "Choose how often to refresh. You add routes afterwards via Configure.",
+        "data": {
+          "scan_interval": "Refresh interval (minutes)"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only one instance of 9292 OV is allowed."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "9292 OV",
+        "menu_options": {
+          "settings": "Settings",
+          "add_route": "Add a route",
+          "edit_route": "Edit a route",
+          "remove_route": "Remove a route"
+        }
+      },
+      "settings": {
+        "title": "9292 settings",
+        "data": {
+          "scan_interval": "Refresh interval (minutes)"
+        }
+      },
+      "route": {
+        "title": "Route",
+        "description": "Get the next public transport journey between two places. Places are 9292 location ids, for example `station-nijmegen` or `veenendaal/ida-gerhardtlaan-28` (the part of the 9292.nl URL after `from=` or `to=`).",
+        "data": {
+          "name": "Name",
+          "from": "From",
+          "to": "To",
+          "person": "Person (owner)",
+          "excluded_modes": "Exclude travel modes",
+          "extra_interchange_time": "Extra interchange time",
+          "accessibility": "Plan with accessibility",
+          "less_walking": "Less walking at start and end"
+        },
+        "data_description": {
+          "person": "Optional. Links the route to a person: it shows in the device name and as the `person` attribute of its sensors, so you can filter and automate per person."
+        }
+      },
+      "edit_route": {
+        "title": "Edit a route",
+        "data": {
+          "route_id": "Route"
+        }
+      },
+      "remove_route": {
+        "title": "Remove a route",
+        "data": {
+          "routes": "Routes to remove"
+        }
+      }
+    },
+    "error": {
+      "place_required": "Fill in both a start and an end place."
+    }
+  },
+  "selector": {
+    "excluded_modes": {
+      "options": {
+        "Bus": "Bus",
+        "Ferry": "Ferry",
+        "OnDemand": "On demand",
+        "Subway": "Metro",
+        "Train": "Train",
+        "Tram": "Tram",
+        "WithSurcharge": "Services with surcharge"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "departure": { "name": "Departure" },
+      "arrival": { "name": "Arrival" },
+      "duration": { "name": "Travel time" },
+      "delay": { "name": "Delay" },
+      "transfers": { "name": "Transfers" },
+      "lines": { "name": "Lines" }
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "9292 openbaar vervoer instellen",
+        "description": "Kies hoe vaak er ververst wordt. Routes voeg je daarna toe via Configureren.",
+        "data": {
+          "scan_interval": "Verversinterval (minuten)"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Er is maar één instantie van 9292 OV toegestaan."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "9292 OV",
+        "menu_options": {
+          "settings": "Instellingen",
+          "add_route": "Route toevoegen",
+          "edit_route": "Route aanpassen",
+          "remove_route": "Route verwijderen"
+        }
+      },
+      "settings": {
+        "title": "9292 instellingen",
+        "data": {
+          "scan_interval": "Verversinterval (minuten)"
+        }
+      },
+      "route": {
+        "title": "Route",
+        "description": "Haal de eerstvolgende reis met het openbaar vervoer tussen twee plaatsen op. Plaatsen zijn 9292 locatie-id's, bijvoorbeeld `station-nijmegen` of `veenendaal/ida-gerhardtlaan-28` (het deel van de 9292.nl-URL na `from=` of `to=`).",
+        "data": {
+          "name": "Naam",
+          "from": "Van",
+          "to": "Naar",
+          "person": "Persoon (eigenaar)",
+          "excluded_modes": "Vervoermiddelen uitsluiten",
+          "extra_interchange_time": "Extra overstaptijd",
+          "accessibility": "Plannen met toegankelijkheid",
+          "less_walking": "Minder lopen aan begin en einde"
+        },
+        "data_description": {
+          "person": "Optioneel. Koppelt de route aan een persoon: die staat in de apparaatnaam en als attribuut `person` van de sensors, zodat je per persoon kunt filteren en automatiseren."
+        }
+      },
+      "edit_route": {
+        "title": "Route aanpassen",
+        "data": {
+          "route_id": "Route"
+        }
+      },
+      "remove_route": {
+        "title": "Route verwijderen",
+        "data": {
+          "routes": "Routes om te verwijderen"
+        }
+      }
+    },
+    "error": {
+      "place_required": "Vul zowel een begin- als eindplaats in."
+    }
+  },
+  "selector": {
+    "excluded_modes": {
+      "options": {
+        "Bus": "Bus",
+        "Ferry": "Veerboot",
+        "OnDemand": "Op aanvraag",
+        "Subway": "Metro",
+        "Train": "Trein",
+        "Tram": "Tram",
+        "WithSurcharge": "Vervoer met toeslag"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "departure": { "name": "Vertrek" },
+      "arrival": { "name": "Aankomst" },
+      "duration": { "name": "Reistijd" },
+      "delay": { "name": "Vertraging" },
+      "transfers": { "name": "Overstappen" },
+      "lines": { "name": "Lijnen" }
+    }
+  }
+}
