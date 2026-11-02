@@ -67,13 +67,13 @@
   "selector": {
     "excluded_modes": {
       "options": {
-        "Bus": "Bus",
-        "Ferry": "Veerboot",
-        "OnDemand": "Op aanvraag",
-        "Subway": "Metro",
-        "Train": "Trein",
-        "Tram": "Tram",
-        "WithSurcharge": "Vervoer met toeslag"
+        "bus": "Bus",
+        "ferry": "Veerboot",
+        "on_demand": "Op aanvraag",
+        "subway": "Metro",
+        "train": "Trein",
+        "tram": "Tram",
+        "with_surcharge": "Vervoer met toeslag"
       }
     }
   },

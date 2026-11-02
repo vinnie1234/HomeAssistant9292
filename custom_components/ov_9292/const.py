@@ -19,8 +19,16 @@ CONF_EXTRA_INTERCHANGE_TIME = "extra_interchange_time"
 CONF_ACCESSIBILITY = "accessibility"
 CONF_LESS_WALKING = "less_walking"
 
-# Travel modes as the 9292 API names them (used in excludedTravelModes)
-TRAVEL_MODES = ["Bus", "Ferry", "OnDemand", "Subway", "Train", "Tram", "WithSurcharge"]
+# Travel modes: option key (valid translation key) -> name in the 9292 API's excludedTravelModes
+TRAVEL_MODES = {
+    "bus": "Bus",
+    "ferry": "Ferry",
+    "on_demand": "OnDemand",
+    "subway": "Subway",
+    "train": "Train",
+    "tram": "Tram",
+    "with_surcharge": "WithSurcharge",
+}
 
 # Number of later options requested next to the first one
 PLANS_AFTER = 5

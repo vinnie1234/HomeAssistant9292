@@ -12,7 +12,7 @@ from urllib.parse import quote
 import aiohttp
 from yarl import URL
 
-from .const import API_URL, PLANS_AFTER
+from .const import API_URL, PLANS_AFTER, TRAVEL_MODES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def build_query(route: dict, when: datetime | None = None) -> str:
         "dateTime": when.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
     }
     if route.get("excluded_modes"):
-        params["excludedTravelModes"] = ",".join(route["excluded_modes"])
+        params["excludedTravelModes"] = ",".join(TRAVEL_MODES[mode] for mode in route["excluded_modes"])
     params |= {
         "planWithAccessibility": str(bool(route.get("accessibility"))).lower(),
         "extraInterchangeTime": str(int(route.get("extra_interchange_time", 0))),

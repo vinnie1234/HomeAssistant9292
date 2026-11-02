@@ -156,7 +156,7 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
                         CONF_EXCLUDED_MODES, default=default(CONF_EXCLUDED_MODES, [])
                     ): SelectSelector(
                         SelectSelectorConfig(
-                            options=TRAVEL_MODES,
+                            options=list(TRAVEL_MODES),
                             translation_key=CONF_EXCLUDED_MODES,
                             multiple=True,
                             mode=SelectSelectorMode.DROPDOWN,

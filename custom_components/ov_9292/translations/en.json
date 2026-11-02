@@ -67,13 +67,13 @@
   "selector": {
     "excluded_modes": {
       "options": {
-        "Bus": "Bus",
-        "Ferry": "Ferry",
-        "OnDemand": "On demand",
-        "Subway": "Metro",
-        "Train": "Train",
-        "Tram": "Tram",
-        "WithSurcharge": "Services with surcharge"
+        "bus": "Bus",
+        "ferry": "Ferry",
+        "on_demand": "On demand",
+        "subway": "Metro",
+        "train": "Train",
+        "tram": "Tram",
+        "with_surcharge": "Services with surcharge"
       }
     }
   },
