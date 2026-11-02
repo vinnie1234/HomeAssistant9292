@@ -6,6 +6,8 @@ attributes, so it subscribes here instead of reading entity states.
 
 from __future__ import annotations
 
+import logging
+
 import aiohttp
 import voluptuous as vol
 
@@ -16,6 +18,9 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import DOMAIN, SIGNAL_READY
 from .planning import NineTwoNineTwoCoordinator
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _loaded_coordinator(hass: HomeAssistant) -> NineTwoNineTwoCoordinator | None:
@@ -43,8 +48,9 @@ async def ws_journey(hass: HomeAssistant, connection: websocket_api.ActiveConnec
         return
     try:
         connection.send_result(msg["id"], await coordinator.async_journey(msg["journey_id"]))
-    except (aiohttp.ClientError, TimeoutError, KeyError, ValueError) as err:
-        connection.send_error(msg["id"], "fetch_failed", str(err))
+    except (aiohttp.ClientError, TimeoutError, KeyError, ValueError, TypeError) as err:
+        _LOGGER.warning("Could not fetch 9292 journey details: %s: %s", type(err).__name__, err)
+        connection.send_error(msg["id"], "fetch_failed", f"{type(err).__name__}: {err}")
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/subscribe"})

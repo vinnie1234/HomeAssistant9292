@@ -529,7 +529,7 @@ class Ov9292Card extends HTMLElement {
     if (!open) return button;
     const detail = this._details.get(route.id);
     let body;
-    if (detail?.error) body = `<div class="unavailable">De reisdetails konden niet geladen worden.</div>`;
+    if (detail?.error) body = `<div class="unavailable">De reisdetails konden niet geladen worden.<br><small>${esc(detail.error)}</small></div>`;
     else if (!detail?.data) body = `<div class="unavailable">Laden…</div>`;
     else body = timelineHtml(detail.data);
     return button + body;
@@ -552,7 +552,7 @@ class Ov9292Card extends HTMLElement {
       this._details.set(id, { journeyId: journey.id, data });
     } catch (err) {
       // Keep what is shown when a refresh fails; only show the error when there is nothing yet
-      if (!this._details.get(id)?.data) this._details.set(id, { error: true });
+      if (!this._details.get(id)?.data) this._details.set(id, { error: err?.message || String(err?.code || err || "onbekende fout") });
     }
     this._renderList();
     this._drawRoute({ fit: id === this._selectedRoute && !this._fittedDetail?.has(id) });

@@ -62,10 +62,12 @@
         "title": "Start of the route",
         "description": "Where does “{name}” start? Search for a place, station, stop or address. Current: {current}",
         "data": {
-          "query": "Search"
+          "query": "Search",
+          "back": "Back to the previous step"
         },
         "data_description": {
-          "query": "Type at least a few letters. Leave empty to keep the current place (when editing)."
+          "query": "Type at least a few letters. Leave empty to keep the current place (when editing).",
+          "back": "Tick this to go back instead of searching."
         }
       },
       "from_pick": {
@@ -79,10 +81,12 @@
         "title": "End of the route",
         "description": "Where does “{name}” end? Search for a place, station, stop or address. Current: {current}",
         "data": {
-          "query": "Search"
+          "query": "Search",
+          "back": "Back to the previous step"
         },
         "data_description": {
-          "query": "Type at least a few letters. Leave empty to keep the current place (when editing)."
+          "query": "Type at least a few letters. Leave empty to keep the current place (when editing).",
+          "back": "Tick this to go back instead of searching."
         }
       },
       "to_pick": {

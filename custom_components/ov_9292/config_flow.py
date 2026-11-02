@@ -54,6 +54,12 @@ from .const import (
 )
 
 
+# Values of the extra choices in the place steps (real location ids never look like this)
+SEARCH_AGAIN = "__search_again__"
+BACK = "__back__"
+BACK_FIELD = "back"
+
+
 def _interval_schema(default: int) -> vol.Schema:
     return vol.Schema(
         {
@@ -93,7 +99,7 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
     """Menu for settings and routes. A route goes through: options, search + pick the start, search + pick the end."""
 
     _editing: dict | None = None
-    _new_route: dict[str, Any]
+    _new_route: dict[str, Any] = {}
     _found: list[dict]
 
     async def async_step_init(self, user_input=None) -> FlowResult:
@@ -112,6 +118,7 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_add_route(self, user_input=None) -> FlowResult:
         self._editing = None
+        self._new_route = {}
         return await self.async_step_route()
 
     async def async_step_edit_route(self, user_input=None) -> FlowResult:
@@ -119,6 +126,7 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
         routes = {route["id"]: route for route in self._routes()}
         if user_input is not None:
             self._editing = routes[user_input["route_id"]]
+            self._new_route = {}
             return await self.async_step_route()
 
         options = [SelectOptionDict(value=r["id"], label=r["name"]) for r in routes.values()]
@@ -135,11 +143,12 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_route(self, user_input=None) -> FlowResult:
         """Name, owner and travel options; the two places follow in the search steps."""
-        editing = self._editing or {}
+        # After a step back the form shows what was filled in before
+        editing = {**(self._editing or {}), **self._new_route}
         if user_input is not None:
             self._new_route = {
                 # Keeping the id of an edited route keeps its devices and entities
-                "id": editing.get("id") or uuid4().hex[:8],
+                "id": (self._editing or {}).get("id") or uuid4().hex[:8],
                 CONF_ROUTE_NAME: user_input[CONF_ROUTE_NAME].strip(),
                 CONF_EXCLUDED_MODES: user_input.get(CONF_EXCLUDED_MODES, []),
                 CONF_EXTRA_INTERCHANGE_TIME: int(user_input[CONF_EXTRA_INTERCHANGE_TIME]),
@@ -246,6 +255,8 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
         current = (self._editing or {}).get(f"{end}_label") or (self._editing or {}).get(end)
         errors = {}
         if user_input is not None:
+            if user_input.get(BACK_FIELD):
+                return await self._async_back(end)
             query = user_input.get("query", "").strip()
             if not query and self._editing:
                 # Editing: leaving the search empty keeps the place as it is
@@ -267,13 +278,17 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
         field = vol.Optional("query") if self._editing else vol.Required("query")
         return self.async_show_form(
             step_id=f"{end}_search",
-            data_schema=vol.Schema({field: TextSelector()}),
+            data_schema=vol.Schema({field: TextSelector(), vol.Optional(BACK_FIELD, default=False): BooleanSelector()}),
             description_placeholders={"name": self._new_route[CONF_ROUTE_NAME], "current": current or "-"},
             errors=errors,
         )
 
     async def _async_pick(self, end: str, user_input: dict | None) -> FlowResult:
         if user_input is not None:
+            if user_input["location"] == SEARCH_AGAIN:
+                return await self._async_search(end, None)
+            if user_input["location"] == BACK:
+                return await self._async_back(end)
             location = next(item for item in self._found if item["id"] == user_input["location"])
             self._new_route[end] = location["id"]
             self._new_route[f"{end}_label"] = location.get("displayLabel") or location["label"]
@@ -287,6 +302,12 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
             )
             for item in self._found
         ]
+        # A way out when none of the matches is right
+        dutch = self.hass.config.language.startswith("nl")
+        options.append(SelectOptionDict(value=SEARCH_AGAIN, label="↺ Opnieuw zoeken" if dutch else "↺ Search again"))
+        options.append(
+            SelectOptionDict(value=BACK, label="← Terug" if dutch else "← Back")
+        )
         return self.async_show_form(
             step_id=f"{end}_pick",
             data_schema=vol.Schema(
@@ -298,6 +319,12 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
             ),
             description_placeholders={"name": self._new_route[CONF_ROUTE_NAME]},
         )
+
+    async def _async_back(self, end: str) -> FlowResult:
+        """One step back: from the start to the route settings, from the end to choosing the start."""
+        if end == "to":
+            return await self.async_step_from_search()
+        return await self.async_step_route()
 
     def _keep_end(self, end: str) -> None:
         for suffix in ("", "_label", "_latlong"):

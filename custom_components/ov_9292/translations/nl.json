@@ -62,10 +62,12 @@
         "title": "Begin van de route",
         "description": "Waar begint “{name}”? Zoek een plaats, station, halte of adres. Nu: {current}",
         "data": {
-          "query": "Zoeken"
+          "query": "Zoeken",
+          "back": "Terug naar de vorige stap"
         },
         "data_description": {
-          "query": "Typ minstens een paar letters. Laat leeg om de huidige plek te houden (bij aanpassen)."
+          "query": "Typ minstens een paar letters. Laat leeg om de huidige plek te houden (bij aanpassen).",
+          "back": "Vink dit aan om terug te gaan in plaats van te zoeken."
         }
       },
       "from_pick": {
@@ -79,10 +81,12 @@
         "title": "Einde van de route",
         "description": "Waar eindigt “{name}”? Zoek een plaats, station, halte of adres. Nu: {current}",
         "data": {
-          "query": "Zoeken"
+          "query": "Zoeken",
+          "back": "Terug naar de vorige stap"
         },
         "data_description": {
-          "query": "Typ minstens een paar letters. Laat leeg om de huidige plek te houden (bij aanpassen)."
+          "query": "Typ minstens een paar letters. Laat leeg om de huidige plek te houden (bij aanpassen).",
+          "back": "Vink dit aan om terug te gaan in plaats van te zoeken."
         }
       },
       "to_pick": {
