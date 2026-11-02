@@ -20,14 +20,10 @@ from .geometry import parse_linestring, simplify_path
 from .const import (
     CONF_ROUTES,
     CONF_SCAN_INTERVAL,
-    CONF_TIME,
     CONF_TIME_ENTITY,
-    CONF_TIME_OFFSET,
     CONF_TIMING,
-    CONF_WEEKDAYS,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    LOCATION_ROWS,
     TIMING_ARRIVAL,
     TIMING_NOW,
     UPCOMING_LIMIT,
@@ -143,15 +139,6 @@ def parse_detail(raw: dict) -> dict:
     return {"legs": legs, "duration_min": raw.get("durationInMinutes"), "changes": raw.get("numberOfChanges")}
 
 
-def _editable(route: dict) -> dict:
-    """The settings of a route the card's editor shows."""
-    return {
-        key: route[key]
-        for key in (CONF_TIMING, CONF_TIME, CONF_WEEKDAYS, CONF_TIME_ENTITY, CONF_TIME_OFFSET)
-        if key in route
-    }
-
-
 def _end(route: dict, end: str) -> dict:
     """One end of a route as the card needs it; routes made before the search have no label."""
     return {
@@ -181,19 +168,6 @@ class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
             else None,
         )
 
-    async def async_locations(self, query: str) -> list[dict]:
-        """Places matching what is typed, for the search in the card."""
-        return [
-            {
-                "id": item["id"],
-                "label": item.get("displayLabel") or item["label"],
-                "category": item.get("category"),
-                "place": item.get("place"),
-                "latlong": parse_lat_long(item.get("latLong")),
-            }
-            for item in await self._client.async_locations(query, LOCATION_ROWS)
-        ]
-
     async def async_journey(self, journey_id: str) -> dict:
         """Details of one journey, fetched when the card asks for it and kept briefly."""
         now = time.monotonic()
@@ -214,7 +188,6 @@ class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
                     "person": route.get("person"),
                     "from": _end(route, "from"),
                     "to": _end(route, "to"),
-                    "config": _editable(route),
                     "timing": result["timing"] if result else {"mode": route.get(CONF_TIMING, TIMING_NOW), "target": None},
                     "error": result is None,
                     "next": result["next"] if result else None,

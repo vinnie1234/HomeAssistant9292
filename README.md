@@ -12,10 +12,6 @@ Public transport journeys from **9292** in Home Assistant: the next departure, a
 
 ## Adding a route
 
-**In the card (with live search):** as an administrator the card shows *Route toevoegen* and a pencil per route. Type a place, station, stop or address and the matches appear while you type, without pressing anything; click one to choose it. The same form sets the name, the person and when to travel, and has a *Verwijderen* button. Options the form does not show (excluded travel modes, extra interchange time, accessibility, less walking) are kept when you edit a route, and can be changed in the settings below. Turn it off with `show_edit: false`.
-
-**In the integration settings:** the steps below work without the card, but a form in Home Assistant cannot search while you type: you type, press submit and pick from the list.
-
 1. **Route:** give it a name, optionally a person and travel options (see the table below).
 2. **Start:** type a place, station, stop or address (for example `Veenendaal Centrum` or a street and place) and pick the right match from the list 9292 suggests.
 3. **End:** the same for the destination.
@@ -143,7 +139,6 @@ max_upcoming: 3         # 1 - 5
 show_person: true       # name and picture of the person on the route
 show_price: false       # price, when 9292 gives one
 show_details: true      # button Reisdetails: stops, platforms, transfers, disruptions
-show_edit: true         # administrators: add / edit / remove routes in the card, with live place search
 person: person.vincent  # only routes of this person
 my_routes_only: false   # only routes of the person linked to the logged-in user
 height: 520             # card height in px on wide screens
