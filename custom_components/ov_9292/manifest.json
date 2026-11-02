@@ -15,5 +15,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/vinnie1234/HomeAssistant9292/issues",
   "requirements": [],
-  "version": "0.3.0"
+  "version": "0.4.0"
 }
