@@ -48,13 +48,14 @@ def slugify(place: str) -> str:
     return "/".join("-".join(part.lower().split()) for part in place.strip().split("/"))
 
 
-def plan_params(route: dict, when: datetime | None = None) -> dict[str, str]:
+def plan_params(route: dict, when: datetime | None = None, request_type: str = "Departure") -> dict[str, str]:
+    """Query for a route; request_type "Arrival" makes `when` the time to be there by."""
     when = (when or datetime.now(timezone.utc)).astimezone(timezone.utc)
     less_walking = str(bool(route.get("less_walking"))).lower()
     params = {
         "from": slugify(route["from"]),
         "to": slugify(route["to"]),
-        "requestType": "Departure",
+        "requestType": request_type,
         "dateTime": when.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
     }
     if route.get("excluded_modes"):
@@ -84,9 +85,11 @@ class NineTwoNineTwoClient:
     def __init__(self, session: aiohttp.ClientSession) -> None:
         self._session = session
 
-    async def async_plans(self, route: dict) -> dict:
-        """The raw plans response for a route, departing now."""
-        return await self._get("plans", plan_params(route))
+    async def async_plans(
+        self, route: dict, when: datetime | None = None, request_type: str = "Departure"
+    ) -> dict:
+        """The raw plans response for a route; departing now unless a time is given."""
+        return await self._get("plans", plan_params(route, when, request_type))
 
     async def async_locations(self, query: str, rows: int = 10) -> list[dict]:
         """Places, stations and stops matching the text, as 9292.nl suggests them."""

@@ -22,6 +22,7 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
     SelectSelectorMode,
     TextSelector,
+    TimeSelector,
 )
 
 from .api import NineTwoNineTwoClient, parse_lat_long
@@ -34,12 +35,22 @@ from .const import (
     CONF_ROUTE_PERSON,
     CONF_ROUTES,
     CONF_SCAN_INTERVAL,
+    CONF_TIME,
+    CONF_TIME_ENTITY,
+    CONF_TIME_OFFSET,
+    CONF_TIMING,
+    CONF_WEEKDAYS,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_TIME,
     DOMAIN,
     LOCATION_ROWS,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
+    TIME_ENTITY_DOMAINS,
+    TIMING_NOW,
+    TIMINGS,
     TRAVEL_MODES,
+    WEEKDAYS,
 )
 
 
@@ -134,9 +145,12 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
                 CONF_EXTRA_INTERCHANGE_TIME: int(user_input[CONF_EXTRA_INTERCHANGE_TIME]),
                 CONF_ACCESSIBILITY: user_input[CONF_ACCESSIBILITY],
                 CONF_LESS_WALKING: user_input[CONF_LESS_WALKING],
+                CONF_TIMING: user_input[CONF_TIMING],
             }
             if person := user_input.get(CONF_ROUTE_PERSON):
                 self._new_route[CONF_ROUTE_PERSON] = person
+            if user_input[CONF_TIMING] != TIMING_NOW:
+                return await self.async_step_timing()
             return await self.async_step_from_search()
 
         def default(key: str, fallback: Any = vol.UNDEFINED) -> Any:
@@ -168,10 +182,51 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
                             min=0, max=30, step=1, unit_of_measurement="min", mode=NumberSelectorMode.BOX
                         )
                     ),
+                    vol.Required(CONF_TIMING, default=default(CONF_TIMING, TIMING_NOW)): SelectSelector(
+                        SelectSelectorConfig(
+                            options=TIMINGS, translation_key=CONF_TIMING, mode=SelectSelectorMode.LIST
+                        )
+                    ),
                     vol.Required(CONF_ACCESSIBILITY, default=default(CONF_ACCESSIBILITY, False)): BooleanSelector(),
                     vol.Required(CONF_LESS_WALKING, default=default(CONF_LESS_WALKING, False)): BooleanSelector(),
                 }
             ),
+        )
+
+    async def async_step_timing(self, user_input=None) -> FlowResult:
+        """The time of a route that is not live: a fixed time on some weekdays, or the time of an entity."""
+        editing = self._editing or {}
+        if user_input is not None:
+            for key in (CONF_TIME, CONF_WEEKDAYS, CONF_TIME_ENTITY, CONF_TIME_OFFSET):
+                if (value := user_input.get(key)) not in (None, ""):
+                    self._new_route[key] = int(value) if key == CONF_TIME_OFFSET else value
+            return await self.async_step_from_search()
+
+        return self.async_show_form(
+            step_id="timing",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_TIME, default=editing.get(CONF_TIME, DEFAULT_TIME)): TimeSelector(),
+                    vol.Required(CONF_WEEKDAYS, default=editing.get(CONF_WEEKDAYS, WEEKDAYS)): SelectSelector(
+                        SelectSelectorConfig(
+                            options=WEEKDAYS,
+                            translation_key=CONF_WEEKDAYS,
+                            multiple=True,
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_TIME_ENTITY,
+                        description={"suggested_value": editing.get(CONF_TIME_ENTITY)},
+                    ): EntitySelector(EntitySelectorConfig(domain=TIME_ENTITY_DOMAINS)),
+                    vol.Required(CONF_TIME_OFFSET, default=editing.get(CONF_TIME_OFFSET, 0)): NumberSelector(
+                        NumberSelectorConfig(
+                            min=-240, max=240, step=1, unit_of_measurement="min", mode=NumberSelectorMode.BOX
+                        )
+                    ),
+                }
+            ),
+            description_placeholders={"name": self._new_route[CONF_ROUTE_NAME]},
         )
 
     async def async_step_from_search(self, user_input=None) -> FlowResult:

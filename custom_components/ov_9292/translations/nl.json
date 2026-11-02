@@ -39,7 +39,8 @@
           "excluded_modes": "Vervoermiddelen uitsluiten",
           "extra_interchange_time": "Extra overstaptijd",
           "accessibility": "Plannen met toegankelijkheid",
-          "less_walking": "Minder lopen aan begin en einde"
+          "less_walking": "Minder lopen aan begin en einde",
+          "timing": "Wanneer reizen"
         },
         "data_description": {
           "person": "Optioneel. Koppelt de route aan een persoon: die staat in de apparaatnaam en als attribuut `person` van de sensors, zodat je per persoon kunt filteren en automatiseren."
@@ -90,6 +91,20 @@
         "data": {
           "location": "Plek"
         }
+      },
+      "timing": {
+        "title": "Wanneer reizen",
+        "description": "Vaste tijd of van een entiteit. Met een entiteit geldt de tijd van die entiteit (een tijd, datum en tijd, een tijdstempel-sensor of de start van een agenda-afspraak) en wordt de vaste tijd hieronder genegeerd. De verschuiving past de tijd aan: -10 is 10 minuten eerder.",
+        "data": {
+          "time": "Tijd",
+          "weekdays": "Dagen",
+          "time_entity": "Tijd van een entiteit (optioneel)",
+          "time_offset": "Verschuiving (minuten)"
+        },
+        "data_description": {
+          "time_entity": "Datum/tijd-invoer, tijd, tijdstempel-sensor of agenda. Leeg laten voor de vaste tijd.",
+          "weekdays": "Alleen bij een vaste tijd: de route plant voor de eerstvolgende van deze dagen."
+        }
       }
     },
     "error": {
@@ -107,6 +122,24 @@
         "train": "Trein",
         "tram": "Tram",
         "with_surcharge": "Vervoer met toeslag"
+      }
+    },
+    "timing": {
+      "options": {
+        "now": "Nu (live): de eerstvolgende reizen vanaf dit moment",
+        "departure": "Vertrekken op een bepaalde tijd",
+        "arrival": "Aankomen voor een bepaalde tijd"
+      }
+    },
+    "weekdays": {
+      "options": {
+        "mon": "Maandag",
+        "tue": "Dinsdag",
+        "wed": "Woensdag",
+        "thu": "Donderdag",
+        "fri": "Vrijdag",
+        "sat": "Zaterdag",
+        "sun": "Zondag"
       }
     }
   },

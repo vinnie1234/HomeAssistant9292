@@ -15,12 +15,17 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .api import NineTwoNineTwoClient, parse_lat_long
+from .timing import target_time
 from .geometry import parse_linestring, simplify_path
 from .const import (
     CONF_ROUTES,
     CONF_SCAN_INTERVAL,
+    CONF_TIME_ENTITY,
+    CONF_TIMING,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    TIMING_ARRIVAL,
+    TIMING_NOW,
     UPCOMING_LIMIT,
 )
 
@@ -151,6 +156,8 @@ class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
         self.routes: list[dict] = options.get(CONF_ROUTES, [])
         self._client = NineTwoNineTwoClient(async_get_clientsession(hass))
         self._details: dict[str, tuple[float, dict]] = {}
+        # Routes that follow an entity re-plan as soon as that entity changes
+        self.time_entities = sorted({route[CONF_TIME_ENTITY] for route in self.routes if route.get(CONF_TIME_ENTITY)})
         super().__init__(
             hass,
             _LOGGER,
@@ -181,6 +188,7 @@ class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
                     "person": route.get("person"),
                     "from": _end(route, "from"),
                     "to": _end(route, "to"),
+                    "timing": result["timing"] if result else {"mode": route.get(CONF_TIMING, TIMING_NOW), "target": None},
                     "error": result is None,
                     "next": result["next"] if result else None,
                     "upcoming": result["upcoming"] if result else [],
@@ -197,12 +205,19 @@ class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
         return results
 
     async def _async_fetch(self, route: dict) -> dict | None:
+        mode = route.get(CONF_TIMING, TIMING_NOW)
+        target = target_time(self.hass, route)
+        if mode != TIMING_NOW and target is None:
+            _LOGGER.debug("Route %s has no time to plan around right now", route["name"])
+            return None
+        request_type = "Arrival" if mode == TIMING_ARRIVAL else "Departure"
         try:
-            plans = parse_plans(await self._client.async_plans(route))
+            plans = parse_plans(await self._client.async_plans(route, target, request_type))
         except (aiohttp.ClientError, TimeoutError, KeyError, ValueError) as err:
             _LOGGER.warning("Could not fetch 9292 route %s: %s", route["name"], err)
             return None
         # A cancelled journey is no use as "next departure", but stays visible in the list
+        plans["timing"] = {"mode": mode, "target": target.isoformat() if target else None}
         plans["next"] = next((j for j in plans["journeys"] if not j["cancelled"]), None)
         plans["upcoming"] = plans["journeys"][:UPCOMING_LIMIT]
         return plans if plans["next"] else None

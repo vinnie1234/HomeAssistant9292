@@ -38,6 +38,8 @@ def _journey_attributes(journey: dict) -> dict:
 def _summary_attributes(result: dict) -> dict:
     return {
         **_journey_attributes(result["next"]),
+        "timing": result["timing"]["mode"],
+        "target_time": result["timing"]["target"],
         "from": result["from_place"],
         "to": result["to_place"],
         "upcoming": [

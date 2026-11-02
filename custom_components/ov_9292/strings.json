@@ -39,7 +39,8 @@
           "excluded_modes": "Exclude travel modes",
           "extra_interchange_time": "Extra interchange time",
           "accessibility": "Plan with accessibility",
-          "less_walking": "Less walking at start and end"
+          "less_walking": "Less walking at start and end",
+          "timing": "When to travel"
         },
         "data_description": {
           "person": "Optional. Links the route to a person: it shows in the device name and as the `person` attribute of its sensors, so you can filter and automate per person."
@@ -90,6 +91,20 @@
         "data": {
           "location": "Place"
         }
+      },
+      "timing": {
+        "title": "When to travel",
+        "description": "Fixed time or from an entity. With an entity, the time of that entity is used (a time, a date and time, a timestamp sensor or the start of a calendar event) and the fixed time below is ignored. The offset moves the time: -10 means 10 minutes earlier.",
+        "data": {
+          "time": "Time",
+          "weekdays": "Days",
+          "time_entity": "Time from an entity (optional)",
+          "time_offset": "Offset (minutes)"
+        },
+        "data_description": {
+          "time_entity": "Input date/time, time, timestamp sensor or calendar. Leave empty to use the fixed time.",
+          "weekdays": "Only used with a fixed time: the route plans for the next of these days."
+        }
       }
     },
     "error": {
@@ -107,6 +122,24 @@
         "train": "Train",
         "tram": "Tram",
         "with_surcharge": "Services with surcharge"
+      }
+    },
+    "timing": {
+      "options": {
+        "now": "Now (live): the next journeys from this moment",
+        "departure": "Leave at a certain time",
+        "arrival": "Arrive by a certain time"
+      }
+    },
+    "weekdays": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
       }
     }
   },

@@ -41,3 +41,20 @@ SIGNAL_READY = f"{DOMAIN}_ready"
 
 # Locations offered after a search
 LOCATION_ROWS = 10
+
+# When a route travels: now (live), or around a fixed time / a time from an entity
+CONF_TIMING = "timing"
+CONF_TIME = "time"
+CONF_WEEKDAYS = "weekdays"
+CONF_TIME_ENTITY = "time_entity"
+CONF_TIME_OFFSET = "time_offset"
+TIMING_NOW = "now"
+TIMING_DEPARTURE = "departure"
+TIMING_ARRIVAL = "arrival"
+TIMINGS = [TIMING_NOW, TIMING_DEPARTURE, TIMING_ARRIVAL]
+DEFAULT_TIME = "08:00:00"
+# Index = datetime.weekday()
+WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+TIME_ENTITY_DOMAINS = ["input_datetime", "sensor", "calendar", "time"]
+# A departure time stays the target this long after it has passed, then the next day takes over
+DEPARTURE_GRACE_MIN = 30

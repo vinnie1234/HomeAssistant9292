@@ -22,9 +22,33 @@ Routes can be edited and removed later via **Configure**. When editing, leave a 
 |---|---|
 | Name | Shown in the device name, e.g. `Work` |
 | Person | Optional. Links the route to a `person`: device name `9292 Work (Vincent)` and attribute `person` on every sensor |
+| When to travel | *Now* (live, default), *Leave at a certain time* or *Arrive by a certain time*, see below |
 | Exclude travel modes | Bus, Ferry, On demand, Metro, Train, Tram, Services with surcharge. Excluding everything returns no journeys |
 | Extra interchange time | Extra minutes for every transfer |
 | Plan with accessibility / Less walking | As on 9292.nl |
+
+## When a route travels
+
+By default a route is live: the sensors show the next journeys from this moment. Choose *Leave at a certain time* or *Arrive by a certain time* to plan around a moment instead. You then set:
+
+| Setting | Meaning |
+|---|---|
+| Time | A fixed time of day, e.g. `08:00` |
+| Days | The days it applies to, e.g. Monday to Friday. The route plans for the next of these days |
+| Time from an entity | Optional, **replaces** the fixed time. Use an `input_datetime`, a `time` entity, a `sensor` with a timestamp or a `calendar` (the start of the next event). The route re-plans as soon as the entity changes |
+| Offset | Minutes added to the time, e.g. `-10` plans 10 minutes earlier. Useful for a calendar event: arrive 10 minutes before it starts |
+
+How the time moves on by itself:
+
+- **Fixed time:** the route plans for today while the time has not passed. *Leave* stays on that time for 30 minutes after it, *Arrive* switches immediately; then the next selected day takes over, so on Friday evening the route shows Monday morning.
+- **Entity with a time of day** (`input_datetime` with only a time, a `time` entity): handled like a fixed time, so it repeats every selected day.
+- **Entity with a date and time** (`input_datetime` with date, a timestamp sensor, a calendar event): used exactly as it is. When that moment has passed, the route has no time and shows as unavailable until the entity gets a new one.
+
+Examples: an `input_datetime.work_start` set to 09:00 with *Arrive by* and offset `-15`; or `calendar.work` with *Arrive by* to always be on time for your next appointment.
+
+The Lines sensor has the attributes `timing` (`now`, `departure` or `arrival`) and `target_time` (the moment the route is planned around), and the card shows e.g. *Vertrekken om 08:00 · morgen* under the route name.
+
+*Arrive by* asks 9292 for journeys that arrive at that time; check the first results against 9292.nl the first time.
 
 ## Reading a route
 

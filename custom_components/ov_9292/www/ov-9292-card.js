@@ -70,6 +70,7 @@ const STYLE = `
     background: var(--card-background-color); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
   .route-show:hover, .route.selected .route-show { border-color: var(--primary-color); color: var(--primary-color); }
   .places { margin-top: 2px; font-size: 12.5px; color: var(--secondary-text-color); }
+  .timing { display: flex; align-items: center; gap: 4px; --mdc-icon-size: 15px; font-weight: 600; }
   .stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-top: 8px; }
   .time { font-size: 28px; font-weight: 700; line-height: 1.1; }
   .time s { font-size: 14px; font-weight: 400; color: var(--secondary-text-color); margin-left: 6px; }
@@ -184,6 +185,23 @@ const esc = (text) =>
   String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const clock = (iso) => new Date(iso).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
 const minutesBetween = (from, to) => Math.round((new Date(to) - new Date(from)) / 60000);
+
+/** 'vandaag', 'morgen' or 'ma 3 nov' for the day of a moment. */
+function dayLabel(date) {
+  const start = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((start(date) - start(new Date())) / 86400000);
+  if (days === 0) return "vandaag";
+  if (days === 1) return "morgen";
+  return date.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" });
+}
+
+/** What the route plans around: nothing for live routes, else 'Vertrekken om 08:00 · morgen'. */
+function timingText(timing) {
+  if (!timing || timing.mode === "now") return "";
+  const verb = timing.mode === "arrival" ? "Aankomen voor" : "Vertrekken om";
+  if (!timing.target) return `${verb}: geen tijd bekend`;
+  return `${verb} ${clock(timing.target)} · ${dayLabel(new Date(timing.target))}`;
+}
 
 /** Planned time struck through with the real-time one in red when they differ, like 9292.nl. */
 function timesHtml(call) {
@@ -474,12 +492,13 @@ class Ov9292Card extends HTMLElement {
   _routeHtml(route) {
     const head = `<div class="route-head"><span class="route-name">${esc(route.name)}${this._personHtml(route.person)}</span>
       <button class="route-show" data-route="${esc(route.id)}">${route.id === this._selectedRoute ? "Verberg kaart" : "Bekijk op kaart"}</button></div>
-      <div class="places">${esc(route.from.label)} → ${esc(route.to.label)}</div>`;
+      <div class="places">${esc(route.from.label)} → ${esc(route.to.label)}</div>
+      ${timingText(route.timing) ? `<div class="places timing"><ha-icon icon="mdi:clock-outline"></ha-icon> ${esc(timingText(route.timing))}</div>` : ""}`;
     const journey = this._journey(route);
     const selected = route.id === this._selectedRoute;
     if (route.error || !journey) {
       return `<div class="route ${selected ? "selected" : ""}">${head}
-        <div class="unavailable">Geen reis beschikbaar: controleer de plaatsen of probeer het later opnieuw.</div></div>`;
+        <div class="unavailable">Geen reis beschikbaar: controleer de plaatsen en de tijd, of probeer het later opnieuw.</div></div>`;
     }
     const level = journey.delay_min >= 10 ? "bad" : journey.delay_min >= 1 ? "warn" : "";
     const planned = journey.delay_min >= 1 ? `<s>${clock(journey.departure)}</s>` : "";

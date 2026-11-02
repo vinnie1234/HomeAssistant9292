@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import async_track_state_change_event
 
 from .const import DOMAIN, SIGNAL_READY
 from .planning import NineTwoNineTwoCoordinator
@@ -63,6 +64,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.runtime_data = coordinator
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+
+    if coordinator.time_entities:
+        entry.async_on_unload(
+            async_track_state_change_event(
+                hass,
+                coordinator.time_entities,
+                lambda _event: hass.async_create_task(coordinator.async_request_refresh()),
+            )
+        )
 
     _remove_deleted_route_devices(hass, entry, coordinator)
     await _async_register_frontend(hass)
