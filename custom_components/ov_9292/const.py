@@ -1,6 +1,6 @@
 DOMAIN = "ov_9292"
 
-API_URL = "https://web-api.9292.nl/api/v1/plans"
+API_BASE_URL = "https://web-api.9292.nl"
 
 CONF_SCAN_INTERVAL = "scan_interval"
 DEFAULT_SCAN_INTERVAL = 5  # minutes
@@ -13,6 +13,8 @@ CONF_ROUTES = "routes"
 CONF_ROUTE_NAME = "name"
 CONF_ROUTE_FROM = "from"
 CONF_ROUTE_TO = "to"
+# Next to the 9292 id of each end the route keeps its label and [lat, lon] for the card
+ROUTE_ENDS = ("from", "to")
 CONF_ROUTE_PERSON = "person"
 CONF_EXCLUDED_MODES = "excluded_modes"
 CONF_EXTRA_INTERCHANGE_TIME = "extra_interchange_time"
@@ -34,3 +36,8 @@ TRAVEL_MODES = {
 PLANS_AFTER = 5
 # Options listed as an attribute of the summary sensor
 UPCOMING_LIMIT = 5
+
+SIGNAL_READY = f"{DOMAIN}_ready"
+
+# Locations offered after a search
+LOCATION_ROWS = 10

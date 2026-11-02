@@ -36,8 +36,18 @@ def _minutes_between(start: str | None, end: str | None) -> int:
 
 def parse_journey(preview: dict) -> dict:
     """One option of the response, with delay and transfers worked out."""
-    modes = [icon["name"] for icon in preview.get("icons", []) if icon.get("name") != WALKING]
     meta = preview.get("metaData", {})
+    lines = iter(meta.get("lineNumbers", []))
+    # The line numbers belong to the non-walking legs, in order
+    legs = [
+        {
+            "mode": icon["name"],
+            "line": None if icon["name"] == WALKING else next(lines, None),
+            "cancelled": bool(icon.get("cancelled")),
+        }
+        for icon in preview.get("icons", [])
+    ]
+    modes = [leg["mode"] for leg in legs if leg["mode"] != WALKING]
     planned = preview["departureTime"]
     # Without a real-time departure the planned time is all there is
     actual = preview.get("departureRealTime") or planned
@@ -49,6 +59,7 @@ def parse_journey(preview: dict) -> dict:
         "delay_min": max(_minutes_between(planned, actual), 0),
         "transfers": max(len(modes) - 1, 0),
         "modes": modes,
+        "legs": legs,
         "lines": meta.get("lineNumbers", []),
         "operators": meta.get("operators", []),
         "price": round(preview["priceEuroCents"] / 100, 2) if preview.get("priceEuroCents") else None,
@@ -68,6 +79,15 @@ def parse_plans(raw: dict) -> dict:
     }
 
 
+def _end(route: dict, end: str) -> dict:
+    """One end of a route as the card needs it; routes made before the search have no label."""
+    return {
+        "id": route[end],
+        "label": route.get(f"{end}_label") or route[end],
+        "latlong": route.get(f"{end}_latlong"),
+    }
+
+
 class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
     """Data per route id: {"from_place", "to_place", "journeys"}, or None if it failed."""
 
@@ -84,6 +104,25 @@ class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
             if self.routes
             else None,
         )
+
+    def payload(self) -> list[dict]:
+        """What the 9292 card receives over the websocket."""
+        payload = []
+        for route in self.routes:
+            result = (self.data or {}).get(route["id"])
+            payload.append(
+                {
+                    "id": route["id"],
+                    "name": route["name"],
+                    "person": route.get("person"),
+                    "from": _end(route, "from"),
+                    "to": _end(route, "to"),
+                    "error": result is None,
+                    "next": result["next"] if result else None,
+                    "upcoming": result["upcoming"] if result else [],
+                }
+            )
+        return payload
 
     async def _async_update_data(self) -> dict[str, dict | None]:
         if not self.routes:

@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import Any
 from uuid import uuid4
 
+import aiohttp
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     BooleanSelector,
     EntitySelector,
@@ -22,19 +24,19 @@ from homeassistant.helpers.selector import (
     TextSelector,
 )
 
+from .api import NineTwoNineTwoClient, parse_lat_long
 from .const import (
     CONF_ACCESSIBILITY,
     CONF_EXCLUDED_MODES,
     CONF_EXTRA_INTERCHANGE_TIME,
     CONF_LESS_WALKING,
-    CONF_ROUTE_FROM,
     CONF_ROUTE_NAME,
     CONF_ROUTE_PERSON,
-    CONF_ROUTE_TO,
     CONF_ROUTES,
     CONF_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    LOCATION_ROWS,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
     TRAVEL_MODES,
@@ -77,7 +79,11 @@ class NineTwoNineTwoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
+    """Menu for settings and routes. A route goes through: options, search + pick the start, search + pick the end."""
+
     _editing: dict | None = None
+    _new_route: dict[str, Any]
+    _found: list[dict]
 
     async def async_step_init(self, user_input=None) -> FlowResult:
         menu = ["settings", "add_route"]
@@ -98,7 +104,7 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
         return await self.async_step_route()
 
     async def async_step_edit_route(self, user_input=None) -> FlowResult:
-        """Pick the route to change; it then uses the same form as a new one."""
+        """Pick the route to change; it then goes through the same steps as a new one."""
         routes = {route["id"]: route for route in self._routes()}
         if user_input is not None:
             self._editing = routes[user_input["route_id"]]
@@ -117,26 +123,21 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_route(self, user_input=None) -> FlowResult:
+        """Name, owner and travel options; the two places follow in the search steps."""
         editing = self._editing or {}
-        errors = {}
         if user_input is not None:
-            if not user_input[CONF_ROUTE_FROM].strip() or not user_input[CONF_ROUTE_TO].strip():
-                errors["base"] = "place_required"
-            else:
-                route: dict[str, Any] = {
-                    # Keeping the id of an edited route keeps its devices and entities
-                    "id": editing.get("id") or uuid4().hex[:8],
-                    CONF_ROUTE_NAME: user_input[CONF_ROUTE_NAME].strip(),
-                    CONF_ROUTE_FROM: user_input[CONF_ROUTE_FROM].strip(),
-                    CONF_ROUTE_TO: user_input[CONF_ROUTE_TO].strip(),
-                    CONF_EXCLUDED_MODES: user_input.get(CONF_EXCLUDED_MODES, []),
-                    CONF_EXTRA_INTERCHANGE_TIME: int(user_input[CONF_EXTRA_INTERCHANGE_TIME]),
-                    CONF_ACCESSIBILITY: user_input[CONF_ACCESSIBILITY],
-                    CONF_LESS_WALKING: user_input[CONF_LESS_WALKING],
-                }
-                if person := user_input.get(CONF_ROUTE_PERSON):
-                    route[CONF_ROUTE_PERSON] = person
-                return self._save({**self._defaults(), CONF_ROUTES: self._with_route(route)})
+            self._new_route = {
+                # Keeping the id of an edited route keeps its devices and entities
+                "id": editing.get("id") or uuid4().hex[:8],
+                CONF_ROUTE_NAME: user_input[CONF_ROUTE_NAME].strip(),
+                CONF_EXCLUDED_MODES: user_input.get(CONF_EXCLUDED_MODES, []),
+                CONF_EXTRA_INTERCHANGE_TIME: int(user_input[CONF_EXTRA_INTERCHANGE_TIME]),
+                CONF_ACCESSIBILITY: user_input[CONF_ACCESSIBILITY],
+                CONF_LESS_WALKING: user_input[CONF_LESS_WALKING],
+            }
+            if person := user_input.get(CONF_ROUTE_PERSON):
+                self._new_route[CONF_ROUTE_PERSON] = person
+            return await self.async_step_from_search()
 
         def default(key: str, fallback: Any = vol.UNDEFINED) -> Any:
             return editing.get(key, fallback)
@@ -146,8 +147,6 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_ROUTE_NAME, default=default(CONF_ROUTE_NAME)): str,
-                    vol.Required(CONF_ROUTE_FROM, default=default(CONF_ROUTE_FROM)): TextSelector(),
-                    vol.Required(CONF_ROUTE_TO, default=default(CONF_ROUTE_TO)): TextSelector(),
                     vol.Optional(
                         CONF_ROUTE_PERSON,
                         description={"suggested_value": editing.get(CONF_ROUTE_PERSON)},
@@ -173,8 +172,87 @@ class NineTwoNineTwoOptionsFlow(config_entries.OptionsFlow):
                     vol.Required(CONF_LESS_WALKING, default=default(CONF_LESS_WALKING, False)): BooleanSelector(),
                 }
             ),
+        )
+
+    async def async_step_from_search(self, user_input=None) -> FlowResult:
+        return await self._async_search("from", user_input)
+
+    async def async_step_from_pick(self, user_input=None) -> FlowResult:
+        return await self._async_pick("from", user_input)
+
+    async def async_step_to_search(self, user_input=None) -> FlowResult:
+        return await self._async_search("to", user_input)
+
+    async def async_step_to_pick(self, user_input=None) -> FlowResult:
+        return await self._async_pick("to", user_input)
+
+    async def _async_search(self, end: str, user_input: dict | None) -> FlowResult:
+        """Type (part of) a place, station or address; 9292 suggests matches to pick from."""
+        current = (self._editing or {}).get(f"{end}_label") or (self._editing or {}).get(end)
+        errors = {}
+        if user_input is not None:
+            query = user_input.get("query", "").strip()
+            if not query and self._editing:
+                # Editing: leaving the search empty keeps the place as it is
+                self._keep_end(end)
+                return await self._async_after_end(end)
+            if not query:
+                errors["base"] = "no_results"
+            else:
+                try:
+                    client = NineTwoNineTwoClient(async_get_clientsession(self.hass))
+                    self._found = await client.async_locations(query, LOCATION_ROWS)
+                except (aiohttp.ClientError, TimeoutError):
+                    errors["base"] = "cannot_connect"
+                else:
+                    if self._found:
+                        return await self._async_pick(end, None)
+                    errors["base"] = "no_results"
+
+        field = vol.Optional("query") if self._editing else vol.Required("query")
+        return self.async_show_form(
+            step_id=f"{end}_search",
+            data_schema=vol.Schema({field: TextSelector()}),
+            description_placeholders={"name": self._new_route[CONF_ROUTE_NAME], "current": current or "-"},
             errors=errors,
         )
+
+    async def _async_pick(self, end: str, user_input: dict | None) -> FlowResult:
+        if user_input is not None:
+            location = next(item for item in self._found if item["id"] == user_input["location"])
+            self._new_route[end] = location["id"]
+            self._new_route[f"{end}_label"] = location.get("displayLabel") or location["label"]
+            self._new_route[f"{end}_latlong"] = parse_lat_long(location.get("latLong"))
+            return await self._async_after_end(end)
+
+        options = [
+            SelectOptionDict(
+                value=item["id"],
+                label=f"{item.get('displayLabel') or item['label']} ({item.get('category', '')}, {item.get('place', '')})",
+            )
+            for item in self._found
+        ]
+        return self.async_show_form(
+            step_id=f"{end}_pick",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("location"): SelectSelector(
+                        SelectSelectorConfig(options=options, mode=SelectSelectorMode.LIST)
+                    )
+                }
+            ),
+            description_placeholders={"name": self._new_route[CONF_ROUTE_NAME]},
+        )
+
+    def _keep_end(self, end: str) -> None:
+        for suffix in ("", "_label", "_latlong"):
+            if (value := (self._editing or {}).get(f"{end}{suffix}")) is not None:
+                self._new_route[f"{end}{suffix}"] = value
+
+    async def _async_after_end(self, end: str) -> FlowResult:
+        if end == "from":
+            return await self.async_step_to_search()
+        return self._save({**self._defaults(), CONF_ROUTES: self._with_route(self._new_route)})
 
     def _with_route(self, route: dict) -> list[dict]:
         """The routes with this one added, or replacing the edited one."""

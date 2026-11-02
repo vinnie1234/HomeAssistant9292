@@ -32,11 +32,9 @@
       },
       "route": {
         "title": "Route",
-        "description": "Haal de eerstvolgende reis met het openbaar vervoer tussen twee plaatsen op. Plaatsen zijn 9292 locatie-id's, bijvoorbeeld `station-nijmegen` of `utrecht/voorbeeldstraat-1` (het deel van de 9292.nl-URL na `from=` of `to=`).",
+        "description": "Geef de route een naam en kies de reisopties. In de volgende stappen zoek je het begin en het einde.",
         "data": {
           "name": "Naam",
-          "from": "Van",
-          "to": "Naar",
           "person": "Persoon (eigenaar)",
           "excluded_modes": "Vervoermiddelen uitsluiten",
           "extra_interchange_time": "Extra overstaptijd",
@@ -58,10 +56,45 @@
         "data": {
           "routes": "Routes om te verwijderen"
         }
+      },
+      "from_search": {
+        "title": "Begin van de route",
+        "description": "Waar begint “{name}”? Zoek een plaats, station, halte of adres. Nu: {current}",
+        "data": {
+          "query": "Zoeken"
+        },
+        "data_description": {
+          "query": "Typ minstens een paar letters. Laat leeg om de huidige plek te houden (bij aanpassen)."
+        }
+      },
+      "from_pick": {
+        "title": "Kies het begin",
+        "description": "Kies de juiste plek als begin van “{name}”.",
+        "data": {
+          "location": "Plek"
+        }
+      },
+      "to_search": {
+        "title": "Einde van de route",
+        "description": "Waar eindigt “{name}”? Zoek een plaats, station, halte of adres. Nu: {current}",
+        "data": {
+          "query": "Zoeken"
+        },
+        "data_description": {
+          "query": "Typ minstens een paar letters. Laat leeg om de huidige plek te houden (bij aanpassen)."
+        }
+      },
+      "to_pick": {
+        "title": "Kies het einde",
+        "description": "Kies de juiste plek als einde van “{name}”.",
+        "data": {
+          "location": "Plek"
+        }
       }
     },
     "error": {
-      "place_required": "Vul zowel een begin- als eindplaats in."
+      "no_results": "Niets gevonden. Probeer een andere zoekopdracht, bijvoorbeeld een stationsnaam of straat en plaats.",
+      "cannot_connect": "9292 is niet bereikbaar. Probeer het zo nog eens."
     }
   },
   "selector": {
@@ -79,12 +112,24 @@
   },
   "entity": {
     "sensor": {
-      "departure": { "name": "Vertrek" },
-      "arrival": { "name": "Aankomst" },
-      "duration": { "name": "Reistijd" },
-      "delay": { "name": "Vertraging" },
-      "transfers": { "name": "Overstappen" },
-      "lines": { "name": "Lijnen" }
+      "departure": {
+        "name": "Vertrek"
+      },
+      "arrival": {
+        "name": "Aankomst"
+      },
+      "duration": {
+        "name": "Reistijd"
+      },
+      "delay": {
+        "name": "Vertraging"
+      },
+      "transfers": {
+        "name": "Overstappen"
+      },
+      "lines": {
+        "name": "Lijnen"
+      }
     }
   }
 }

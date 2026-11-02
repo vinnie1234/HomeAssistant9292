@@ -1,15 +1,44 @@
+from pathlib import Path
+
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from .const import DOMAIN
+from .const import DOMAIN, SIGNAL_READY
 from .planning import NineTwoNineTwoCoordinator
+from .websocket import async_register_websocket
 
 PLATFORMS = ["sensor"]
+
+WWW_URL = f"/{DOMAIN}"
+WWW_PATH = Path(__file__).parent / "www"
+CARD_FILE = "ov-9292-card.js"
+FRONTEND_REGISTERED = f"{DOMAIN}_frontend_registered"
 
 
 def route_device_identifier(entry: ConfigEntry, route_id: str) -> tuple[str, str]:
     return (DOMAIN, f"{entry.entry_id}_route_{route_id}")
+
+
+def _card_version() -> int:
+    return int((WWW_PATH / CARD_FILE).stat().st_mtime)
+
+
+async def _async_register_frontend(hass: HomeAssistant) -> None:
+    """Serve the card (and Leaflet) and load it in the frontend, once per run."""
+    if hass.data.get(FRONTEND_REGISTERED):
+        return
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(WWW_URL, str(WWW_PATH), cache_headers=False)]
+    )
+    version = await hass.async_add_executor_job(_card_version)
+    # The version in the URL makes browsers pick up a new card after an update
+    add_extra_js_url(hass, f"{WWW_URL}/{CARD_FILE}?v={version}")
+    async_register_websocket(hass)
+    hass.data[FRONTEND_REGISTERED] = True
 
 
 def _remove_deleted_route_devices(
@@ -36,7 +65,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     _remove_deleted_route_devices(hass, entry, coordinator)
+    await _async_register_frontend(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    async_dispatcher_send(hass, SIGNAL_READY)
     return True
 
 

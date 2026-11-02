@@ -32,7 +32,7 @@ def _person_suffix(hass: HomeAssistant, person: str | None) -> str:
 
 
 def _journey_attributes(journey: dict) -> dict:
-    return {key: journey[key] for key in ("lines", "operators", "modes", "price", "occupancy", "detour")}
+    return {key: journey[key] for key in ("legs", "lines", "operators", "modes", "price", "occupancy", "detour")}
 
 
 def _summary_attributes(result: dict) -> dict:
@@ -41,7 +41,7 @@ def _summary_attributes(result: dict) -> dict:
         "from": result["from_place"],
         "to": result["to_place"],
         "upcoming": [
-            {key: journey[key] for key in ("departure_actual", "arrival", "duration_min", "delay_min", "transfers", "lines", "cancelled")}
+            {key: journey[key] for key in ("departure_actual", "arrival", "duration_min", "delay_min", "transfers", "legs", "lines", "cancelled")}
             for journey in result["upcoming"]
         ],
     }

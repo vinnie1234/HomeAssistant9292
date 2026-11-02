@@ -32,11 +32,9 @@
       },
       "route": {
         "title": "Route",
-        "description": "Get the next public transport journey between two places. Places are 9292 location ids, for example `station-nijmegen` or `utrecht/voorbeeldstraat-1` (the part of the 9292.nl URL after `from=` or `to=`).",
+        "description": "Name the route and choose its travel options. In the next steps you search for the start and the end.",
         "data": {
           "name": "Name",
-          "from": "From",
-          "to": "To",
           "person": "Person (owner)",
           "excluded_modes": "Exclude travel modes",
           "extra_interchange_time": "Extra interchange time",
@@ -58,10 +56,45 @@
         "data": {
           "routes": "Routes to remove"
         }
+      },
+      "from_search": {
+        "title": "Start of the route",
+        "description": "Where does “{name}” start? Search for a place, station, stop or address. Current: {current}",
+        "data": {
+          "query": "Search"
+        },
+        "data_description": {
+          "query": "Type at least a few letters. Leave empty to keep the current place (when editing)."
+        }
+      },
+      "from_pick": {
+        "title": "Choose the start",
+        "description": "Pick the right place for the start of “{name}”.",
+        "data": {
+          "location": "Place"
+        }
+      },
+      "to_search": {
+        "title": "End of the route",
+        "description": "Where does “{name}” end? Search for a place, station, stop or address. Current: {current}",
+        "data": {
+          "query": "Search"
+        },
+        "data_description": {
+          "query": "Type at least a few letters. Leave empty to keep the current place (when editing)."
+        }
+      },
+      "to_pick": {
+        "title": "Choose the end",
+        "description": "Pick the right place for the end of “{name}”.",
+        "data": {
+          "location": "Place"
+        }
       }
     },
     "error": {
-      "place_required": "Fill in both a start and an end place."
+      "no_results": "Nothing found. Try another search, for example a station name or a street and place.",
+      "cannot_connect": "Could not reach 9292. Try again in a moment."
     }
   },
   "selector": {
@@ -79,12 +112,24 @@
   },
   "entity": {
     "sensor": {
-      "departure": { "name": "Departure" },
-      "arrival": { "name": "Arrival" },
-      "duration": { "name": "Travel time" },
-      "delay": { "name": "Delay" },
-      "transfers": { "name": "Transfers" },
-      "lines": { "name": "Lines" }
+      "departure": {
+        "name": "Departure"
+      },
+      "arrival": {
+        "name": "Arrival"
+      },
+      "duration": {
+        "name": "Travel time"
+      },
+      "delay": {
+        "name": "Delay"
+      },
+      "transfers": {
+        "name": "Transfers"
+      },
+      "lines": {
+        "name": "Lines"
+      }
     }
   }
 }
