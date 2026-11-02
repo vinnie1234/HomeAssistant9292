@@ -32,7 +32,7 @@
       },
       "route": {
         "title": "Route",
-        "description": "Get the next public transport journey between two places. Places are 9292 location ids, for example `station-nijmegen` or `veenendaal/ida-gerhardtlaan-28` (the part of the 9292.nl URL after `from=` or `to=`).",
+        "description": "Get the next public transport journey between two places. Places are 9292 location ids, for example `station-nijmegen` or `utrecht/voorbeeldstraat-1` (the part of the 9292.nl URL after `from=` or `to=`).",
         "data": {
           "name": "Name",
           "from": "From",

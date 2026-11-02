@@ -32,7 +32,7 @@
       },
       "route": {
         "title": "Route",
-        "description": "Haal de eerstvolgende reis met het openbaar vervoer tussen twee plaatsen op. Plaatsen zijn 9292 locatie-id's, bijvoorbeeld `station-nijmegen` of `veenendaal/ida-gerhardtlaan-28` (het deel van de 9292.nl-URL na `from=` of `to=`).",
+        "description": "Haal de eerstvolgende reis met het openbaar vervoer tussen twee plaatsen op. Plaatsen zijn 9292 locatie-id's, bijvoorbeeld `station-nijmegen` of `utrecht/voorbeeldstraat-1` (het deel van de 9292.nl-URL na `from=` of `to=`).",
         "data": {
           "name": "Naam",
           "from": "Van",

@@ -15,7 +15,7 @@ Public transport journeys from **9292** as Home Assistant sensors: the next depa
 | Field | Meaning |
 |---|---|
 | Name | Shown in the device name, e.g. `Work` |
-| From / To | 9292 location ids: the part after `from=` / `to=` in a 9292.nl URL, e.g. `veenendaal/ida-gerhardtlaan-28` or `station-nijmegen`. Spaces and capitals are converted |
+| From / To | 9292 location ids: the part after `from=` / `to=` in a 9292.nl URL, e.g. `utrecht/voorbeeldstraat-1` or `station-nijmegen`. Spaces and capitals are converted |
 | Person | Optional. Links the route to a `person`: device name `9292 Work (Vincent)` and attribute `person` on every sensor |
 | Exclude travel modes | Bus, Ferry, On demand, Metro, Train, Tram, Services with surcharge. Excluding everything returns no journeys |
 | Extra interchange time | Extra minutes for every transfer |

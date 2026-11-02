@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 
 import aiohttp
+from yarl import URL
 
 from .const import API_URL, PLANS_AFTER
 
@@ -43,7 +44,7 @@ def sign(request_time: int, signed_url: str, query: str) -> str:
 
 
 def slugify(place: str) -> str:
-    """'Veenendaal/Ida Gerhardtlaan 28' -> 'veenendaal/ida-gerhardtlaan-28' (the 9292 location id)."""
+    """'Utrecht/Voorbeeldstraat 1' -> 'utrecht/voorbeeldstraat-1' (the 9292 location id)."""
     return "/".join("-".join(part.lower().split()) for part in place.strip().split("/"))
 
 
@@ -87,8 +88,10 @@ class NineTwoNineTwoClient:
                 "x-request-time": str(request_time),
                 "x-validation-token": sign(request_time, SIGNED_URL_VARIANTS[index], query),
             }
+            # encoded=True: aiohttp must send the query exactly as signed (it would otherwise
+            # turn %2F and %3A back into "/" and ":", which changes the signature)
             async with self._session.get(
-                f"{API_URL}?{query}", headers=headers, timeout=REQUEST_TIMEOUT
+                URL(f"{API_URL}?{query}", encoded=True), headers=headers, timeout=REQUEST_TIMEOUT
             ) as response:
                 if response.status == 401:
                     _LOGGER.debug("9292 rejected signature variant %s", SIGNED_URL_VARIANTS[index])
