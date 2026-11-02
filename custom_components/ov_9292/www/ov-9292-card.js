@@ -12,6 +12,7 @@
  *   max_upcoming: 3        # how many following journeys
  *   show_person: true      # name and picture of the person linked to the route
  *   show_price: false      # price of the journey, when 9292 gives one
+ *   show_edit: true        # admins: add / edit / remove routes with live place search
  *   show_details: true     # button that expands the journey: stops, platforms, transfers, disruptions
  *   person: person.vincent # only routes of this person
  *   my_routes_only: false  # only routes of the person linked to the logged-in user
@@ -136,6 +137,57 @@ const STYLE = `
   .disruption summary::-webkit-details-marker { display: none; }
   .disruption[open] summary { display: none; }
   .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .route-edit { flex: none; cursor: pointer; display: inline-flex; padding: 5px; border-radius: 50%; border: 0; background: transparent;
+    color: var(--secondary-text-color); --mdc-icon-size: 18px; }
+  .route-edit:hover { background: var(--secondary-background-color); color: var(--primary-color); }
+  .add-route { margin: 0 12px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px;
+    border-radius: 18px; border: 1px dashed var(--divider-color); background: transparent; color: var(--primary-color);
+    font: inherit; font-size: 13.5px; font-weight: 600; --mdc-icon-size: 18px; }
+  .add-route:hover { background: var(--secondary-background-color); }
+
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; padding: 16px;
+    background: rgba(0,0,0,.55); }
+  .dialog { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 20px; border-radius: 14px;
+    background: var(--card-background-color); color: var(--primary-text-color); box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+  .dialog h2 { margin: 0 0 14px; font-size: 18px; font-weight: 600; }
+  .field { display: block; margin-bottom: 14px; font-size: 12.5px; font-weight: 600; color: var(--secondary-text-color); position: relative; }
+  .dialog input[type=text], .dialog input[type=search], .dialog input[type=time], .dialog input[type=number], .dialog input:not([type]),
+  .dialog select { display: block; width: 100%; margin-top: 4px; padding: 9px 11px; border-radius: 8px; font: inherit; font-size: 14.5px; font-weight: 400;
+    border: 1px solid var(--divider-color); background: var(--secondary-background-color); color: var(--primary-text-color); }
+  .dialog input:focus, .dialog select:focus { outline: 2px solid var(--primary-color); outline-offset: -1px; }
+  .results { margin-top: 4px; border-radius: 8px; overflow: hidden; border: 1px solid var(--divider-color); }
+  .results:empty { display: none; }
+  .result { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 8px 11px; cursor: pointer; border: 0;
+    border-bottom: 1px solid var(--divider-color); background: var(--card-background-color); color: var(--primary-text-color); font: inherit; font-size: 14px; text-align: left; }
+  .result:last-child { border-bottom: 0; }
+  .result:hover, .result:focus { background: var(--secondary-background-color); }
+  .result small { color: var(--secondary-text-color); font-size: 12px; }
+  .searching { padding: 9px 11px; font-size: 13px; font-weight: 400; color: var(--secondary-text-color); }
+  .chosen { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; padding: 8px 8px 8px 11px; border-radius: 8px;
+    border: 1px solid var(--primary-color); background: color-mix(in srgb, var(--primary-color) 10%, transparent); --mdc-icon-size: 18px; }
+  .chosen[hidden], .dialog input[hidden] { display: none; }
+  .chip-place { display: inline-flex; align-items: center; gap: 6px; font-size: 14.5px; font-weight: 600; color: var(--primary-text-color); }
+  .chosen .clear { cursor: pointer; display: inline-flex; padding: 4px; border: 0; border-radius: 50%; background: transparent; color: var(--secondary-text-color); }
+  .chosen .clear:hover { background: var(--secondary-background-color); }
+  .days { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .day input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .day { position: relative; }
+  .day span { display: inline-block; min-width: 38px; padding: 6px 8px; text-align: center; border-radius: 16px; cursor: pointer; font-size: 13px;
+    border: 1px solid var(--divider-color); color: var(--primary-text-color); font-weight: 500; }
+  .day input:checked + span { background: var(--primary-color); border-color: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .day input:focus-visible + span { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+  .timing-fields[hidden] { display: none; }
+  .editor-error { margin-bottom: 12px; padding: 8px 11px; border-radius: 8px; font-size: 13.5px; color: #ef5350;
+    background: color-mix(in srgb, #ef5350 14%, transparent); }
+  .editor-error[hidden] { display: none; }
+  .actions { display: flex; align-items: center; gap: 8px; }
+  .actions .spacer { flex: 1; }
+  .actions button { cursor: pointer; padding: 9px 16px; border-radius: 8px; font: inherit; font-size: 14px; font-weight: 600;
+    border: 1px solid var(--divider-color); background: transparent; color: var(--primary-text-color); }
+  .actions button.primary { background: var(--primary-color); border-color: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .actions button.delete { color: #ef5350; border-color: transparent; }
+  .actions button:disabled { opacity: .5; cursor: default; }
 
   .empty { padding: 28px 16px; text-align: center; color: var(--secondary-text-color); }
   .empty ha-icon { --mdc-icon-size: 40px; opacity: .6; display: block; margin: 0 auto 8px; }
@@ -301,6 +353,7 @@ class Ov9292Card extends HTMLElement {
       show_person: true,
       show_price: false,
       show_details: true,
+      show_edit: true,
       my_routes_only: false,
       height: 520,
       ...config,
@@ -428,6 +481,9 @@ class Ov9292Card extends HTMLElement {
     $(".list").addEventListener("click", (event) => {
       const show = event.target.closest(".route-show");
       if (show) return this._toggleRoute(show.dataset.route);
+      const edit = event.target.closest(".route-edit");
+      if (edit) return this._openEditor(this._routes.find((r) => r.id === edit.dataset.route));
+      if (event.target.closest(".add-route")) return this._openEditor(null);
       const toggle = event.target.closest(".details-toggle");
       if (toggle) return this._toggleDetails(toggle.dataset.route);
       const next = event.target.closest(".next");
@@ -491,7 +547,8 @@ class Ov9292Card extends HTMLElement {
 
   _routeHtml(route) {
     const head = `<div class="route-head"><span class="route-name">${esc(route.name)}${this._personHtml(route.person)}</span>
-      <button class="route-show" data-route="${esc(route.id)}">${route.id === this._selectedRoute ? "Verberg kaart" : "Bekijk op kaart"}</button></div>
+      <button class="route-show" data-route="${esc(route.id)}">${route.id === this._selectedRoute ? "Verberg kaart" : "Bekijk op kaart"}</button>
+      ${this._canEdit() ? `<button class="route-edit" data-route="${esc(route.id)}" title="Route aanpassen"><ha-icon icon="mdi:pencil"></ha-icon></button>` : ""}</div>
       <div class="places">${esc(route.from.label)} → ${esc(route.to.label)}</div>
       ${timingText(route.timing) ? `<div class="places timing"><ha-icon icon="mdi:clock-outline"></ha-icon> ${esc(timingText(route.timing))}</div>` : ""}`;
     const journey = this._journey(route);
@@ -563,9 +620,12 @@ class Ov9292Card extends HTMLElement {
     const list = this.shadowRoot.querySelector(".list");
     if (!list) return;
     const routes = this._visibleRoutes();
+    const add = this._canEdit()
+      ? `<button class="add-route"><ha-icon icon="mdi:plus"></ha-icon>Route toevoegen</button>`
+      : "";
     list.innerHTML = routes.length
-      ? routes.map((route) => this._routeHtml(route)).join("")
-      : `<div class="empty"><ha-icon icon="mdi:train-bus"></ha-icon>Geen routes. Voeg een route toe via de integratie-instellingen.</div>`;
+      ? routes.map((route) => this._routeHtml(route)).join("") + add
+      : `<div class="empty"><ha-icon icon="mdi:train-bus"></ha-icon>Geen routes.${this._canEdit() ? "" : " Voeg een route toe via de integratie-instellingen."}</div>${add}`;
   }
 
   _toggleRoute(id) {
@@ -574,6 +634,226 @@ class Ov9292Card extends HTMLElement {
     this._drawRoute({ fit: true });
     if (this._selectedRoute && !this._root.classList.contains("wide")) {
       this.shadowRoot.querySelector(".mapbox").scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }
+
+  /* ---------- route editor ---------- */
+
+  _canEdit() {
+    return this._config.show_edit && !!this._hass?.user?.is_admin;
+  }
+
+  _entityOptions() {
+    return Object.values(this._hass?.states || {})
+      .filter((state) => {
+        const domain = state.entity_id.split(".")[0];
+        return (
+          ["input_datetime", "time", "calendar"].includes(domain) ||
+          (domain === "sensor" && state.attributes.device_class === "timestamp")
+        );
+      })
+      .map((state) => state.entity_id)
+      .sort();
+  }
+
+  _persons() {
+    return Object.values(this._hass?.states || {})
+      .filter((state) => state.entity_id.startsWith("person."))
+      .map((state) => [state.entity_id, state.attributes.friendly_name || state.entity_id]);
+  }
+
+  _openEditor(route) {
+    this._closeEditor();
+    const config = route?.config || {};
+    const place = (end) => (route ? { id: end.id, label: end.label, latlong: end.latlong } : null);
+    this._edit = {
+      id: route?.id || null,
+      from: route ? place(route.from) : null,
+      to: route ? place(route.to) : null,
+      searchSeq: { from: 0, to: 0 },
+    };
+    const days = config.weekdays || ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+    const dayNames = { mon: "Ma", tue: "Di", wed: "Wo", thu: "Do", fri: "Vr", sat: "Za", sun: "Zo" };
+    const overlay = document.createElement("div");
+    overlay.className = "overlay";
+    overlay.innerHTML = `
+      <div class="dialog" role="dialog" aria-modal="true" aria-label="${route ? "Route aanpassen" : "Route toevoegen"}">
+        <h2>${route ? "Route aanpassen" : "Route toevoegen"}</h2>
+        <label class="field">Naam<input class="f-name" type="text" value="${esc(route?.name || "")}" placeholder="Bijvoorbeeld Naar werk" /></label>
+        <label class="field">Persoon<select class="f-person"><option value="">Niemand</option>
+          ${this._persons().map(([id, name]) => `<option value="${esc(id)}" ${route?.person === id ? "selected" : ""}>${esc(name)}</option>`).join("")}</select></label>
+        ${["from", "to"]
+          .map(
+            (end) => `<div class="field place" data-end="${end}">
+              <span>${end === "from" ? "Van" : "Naar"}</span>
+              <div class="chosen"></div>
+              <input class="q" type="search" autocomplete="off" placeholder="Typ een plaats, station, halte of adres" />
+              <div class="results" role="listbox"></div></div>`
+          )
+          .join("")}
+        <label class="field">Wanneer reizen
+          <select class="f-timing">
+            <option value="now" ${(config.timing || "now") === "now" ? "selected" : ""}>Nu (live)</option>
+            <option value="departure" ${config.timing === "departure" ? "selected" : ""}>Vertrekken op een bepaalde tijd</option>
+            <option value="arrival" ${config.timing === "arrival" ? "selected" : ""}>Aankomen voor een bepaalde tijd</option>
+          </select></label>
+        <div class="timing-fields">
+          <label class="field">Tijd<input class="f-time" type="time" value="${esc((config.time || "08:00").slice(0, 5))}" /></label>
+          <div class="field">Dagen<div class="days">${Object.entries(dayNames)
+            .map(([key, name]) => `<label class="day"><input type="checkbox" value="${key}" ${days.includes(key) ? "checked" : ""} /><span>${name}</span></label>`)
+            .join("")}</div></div>
+          <label class="field">Tijd van een entiteit (optioneel, vervangt de tijd hierboven)
+            <input class="f-entity" list="ov9292-entities" value="${esc(config.time_entity || "")}" placeholder="input_datetime.…, calendar.… of sensor.…" />
+            <datalist id="ov9292-entities">${this._entityOptions().map((id) => `<option value="${esc(id)}"></option>`).join("")}</datalist></label>
+          <label class="field">Verschuiving in minuten (bijvoorbeeld -10 is 10 minuten eerder)
+            <input class="f-offset" type="number" step="1" value="${Number(config.time_offset || 0)}" /></label>
+        </div>
+        <div class="editor-error" role="alert" hidden></div>
+        <div class="actions">
+          ${route ? '<button class="delete" type="button">Verwijderen</button>' : ""}
+          <span class="spacer"></span>
+          <button class="cancel" type="button">Annuleren</button>
+          <button class="save primary" type="button">Opslaan</button>
+        </div>
+      </div>`;
+    this.shadowRoot.querySelector("ha-card").appendChild(overlay);
+    this._overlay = overlay;
+
+    const $ = (selector) => overlay.querySelector(selector);
+    const updateTiming = () => {
+      $(".timing-fields").hidden = $(".f-timing").value === "now";
+    };
+    $(".f-timing").addEventListener("change", updateTiming);
+    updateTiming();
+    for (const end of ["from", "to"]) this._wirePlace(end);
+    $(".cancel").addEventListener("click", () => this._closeEditor());
+    $(".save").addEventListener("click", () => this._saveEditor());
+    $(".delete")?.addEventListener("click", () => this._deleteRoute());
+    this._onKey = (event) => event.key === "Escape" && this._closeEditor();
+    document.addEventListener("keydown", this._onKey);
+    $(".f-name").focus();
+  }
+
+  _closeEditor() {
+    this._overlay?.remove();
+    this._overlay = null;
+    this._edit = null;
+    if (this._onKey) document.removeEventListener("keydown", this._onKey);
+    this._onKey = null;
+  }
+
+  /** Live search for one end: results appear while typing, no submit needed. */
+  _wirePlace(end) {
+    const box = this._overlay.querySelector(`.place[data-end="${end}"]`);
+    const input = box.querySelector(".q");
+    const results = box.querySelector(".results");
+    const chosen = box.querySelector(".chosen");
+    let timer = null;
+    let found = [];
+
+    const showChosen = () => {
+      const place = this._edit[end];
+      chosen.hidden = !place;
+      input.hidden = !!place;
+      results.innerHTML = "";
+      chosen.innerHTML = place
+        ? `<span class="chip-place"><ha-icon icon="mdi:map-marker"></ha-icon>${esc(place.label)}</span><button type="button" class="clear" title="Andere plek kiezen"><ha-icon icon="mdi:close"></ha-icon></button>`
+        : "";
+    };
+    chosen.addEventListener("click", (event) => {
+      if (!event.target.closest(".clear")) return;
+      this._edit[end] = null;
+      showChosen();
+      input.value = "";
+      input.focus();
+    });
+    results.addEventListener("click", (event) => {
+      const item = event.target.closest(".result");
+      if (!item) return;
+      this._edit[end] = found[Number(item.dataset.index)];
+      showChosen();
+    });
+    input.addEventListener("input", () => {
+      clearTimeout(timer);
+      const query = input.value.trim();
+      if (query.length < 2) {
+        results.innerHTML = "";
+        return;
+      }
+      timer = setTimeout(async () => {
+        const seq = ++this._edit.searchSeq[end];
+        results.innerHTML = `<div class="searching">Zoeken…</div>`;
+        try {
+          const places = await this._hass.connection.sendMessagePromise({ type: "ov_9292/locations", query });
+          if (!this._edit || seq !== this._edit.searchSeq[end]) return; // a newer search is running
+          found = places.map((p) => ({ id: p.id, label: p.label, latlong: p.latlong, category: p.category, place: p.place }));
+          results.innerHTML = found.length
+            ? found
+                .map(
+                  (p, index) => `<button type="button" class="result" role="option" data-index="${index}">
+                    <span>${esc(p.label)}</span><small>${esc([p.category, p.place].filter(Boolean).join(" · "))}</small></button>`
+                )
+                .join("")
+            : `<div class="searching">Niets gevonden</div>`;
+        } catch (err) {
+          if (this._edit && seq === this._edit.searchSeq[end]) results.innerHTML = `<div class="searching">Zoeken mislukt</div>`;
+        }
+      }, 250);
+    });
+    showChosen();
+  }
+
+  _editorError(message) {
+    const box = this._overlay?.querySelector(".editor-error");
+    if (!box) return;
+    box.hidden = !message;
+    box.textContent = message || "";
+  }
+
+  async _saveEditor() {
+    const $ = (selector) => this._overlay.querySelector(selector);
+    const name = $(".f-name").value.trim();
+    if (!name) return this._editorError("Geef de route een naam.");
+    if (!this._edit.from || !this._edit.to) return this._editorError("Kies zowel een begin als een einde uit de zoekresultaten.");
+    const timing = $(".f-timing").value;
+    const weekdays = [...this._overlay.querySelectorAll(".days input:checked")].map((box) => box.value);
+    if (timing !== "now" && !weekdays.length) return this._editorError("Kies minstens één dag.");
+
+    const route = {
+      name,
+      person: $(".f-person").value || null,
+      from: this._edit.from,
+      to: this._edit.to,
+      timing,
+    };
+    if (this._edit.id) route.id = this._edit.id;
+    if (timing !== "now") {
+      Object.assign(route, {
+        time: `${$(".f-time").value || "08:00"}:00`,
+        weekdays,
+        time_entity: $(".f-entity").value.trim() || null,
+        time_offset: Math.round(Number($(".f-offset").value) || 0),
+      });
+    }
+    await this._send({ type: "ov_9292/save_route", route });
+  }
+
+  async _deleteRoute() {
+    if (!this._edit?.id || !window.confirm("Deze route verwijderen?")) return;
+    await this._send({ type: "ov_9292/delete_route", route_id: this._edit.id });
+  }
+
+  async _send(message) {
+    const buttons = this._overlay.querySelectorAll(".actions button");
+    buttons.forEach((button) => (button.disabled = true));
+    this._editorError(null);
+    try {
+      await this._hass.connection.sendMessagePromise(message);
+      // The integration reloads and sends the card the new routes by itself
+      this._closeEditor();
+    } catch (err) {
+      buttons.forEach((button) => (button.disabled = false));
+      this._editorError(`Opslaan mislukt: ${err?.message || "onbekende fout"}`);
     }
   }
 
@@ -691,6 +971,7 @@ const EDITOR_SCHEMA = [
   { name: "show_person", selector: { boolean: {} } },
   { name: "show_price", selector: { boolean: {} } },
   { name: "show_details", selector: { boolean: {} } },
+  { name: "show_edit", selector: { boolean: {} } },
   { name: "my_routes_only", selector: { boolean: {} } },
   { name: "person", selector: { entity: { domain: "person" } } },
   { name: "height", selector: { number: { min: 300, max: 1400, step: 10, mode: "slider", unit_of_measurement: "px" } } },
@@ -702,6 +983,7 @@ const EDITOR_LABELS = {
   max_upcoming: "Aantal volgende reizen",
   show_person: "Persoon bij de route tonen",
   show_price: "Prijs tonen",
+  show_edit: "Routes toevoegen en aanpassen in de kaart (alleen voor beheerders)",
   show_details: "Knop Reisdetails tonen (haltes, perrons, overstappen, storingen)",
   my_routes_only: "Alleen mijn routes (de persoon die bij jouw gebruiker hoort)",
   person: "Alleen routes van deze persoon (leeg = alle routes)",
@@ -715,6 +997,7 @@ const EDITOR_DEFAULTS = {
   show_person: true,
   show_price: false,
   show_details: true,
+  show_edit: true,
   my_routes_only: false,
   height: 520,
 };
