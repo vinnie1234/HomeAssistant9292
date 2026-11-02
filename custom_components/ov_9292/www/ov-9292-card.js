@@ -605,7 +605,7 @@ class Ov9292Card extends HTMLElement {
     const journey = route && this._journey(route);
     if (!journey?.id || !this._hass) return;
     try {
-      const data = await this._hass.connection.sendMessagePromise({ type: "ov_9292/journey", journey_id: journey.id });
+      const data = await this._hass.connection.sendMessagePromise({ type: "ov_9292/journey", journey_id: journey.id, route_id: id });
       this._details.set(id, { journeyId: journey.id, data });
     } catch (err) {
       // Keep what is shown when a refresh fails; only show the error when there is nothing yet

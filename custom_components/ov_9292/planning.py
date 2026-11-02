@@ -194,13 +194,39 @@ class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
             for item in await self._client.async_locations(query, LOCATION_ROWS)
         ]
 
-    async def async_journey(self, journey_id: str) -> dict:
-        """Details of one journey, fetched when the card asks for it and kept briefly."""
+    async def async_journey(self, journey_id: str, route_id: str | None = None) -> dict:
+        """Details of one journey, fetched when the card asks for it and kept briefly.
+
+        9292 refuses the id of a journey once it has aged, so after a rejection the route is planned
+        again and the journey at the same position is asked for.
+        """
         now = time.monotonic()
         self._details = {key: value for key, value in self._details.items() if now - value[0] < DETAIL_TTL}
         if journey_id not in self._details:
-            self._details[journey_id] = (now, parse_detail(await self._client.async_journey(journey_id)))
+            try:
+                raw = await self._client.async_journey(journey_id)
+            except aiohttp.ClientResponseError as err:
+                if err.status != 400 or route_id is None:
+                    raise
+                journey_id, raw = await self._async_journey_with_fresh_id(route_id, journey_id)
+            self._details[journey_id] = (now, parse_detail(raw))
         return self._details[journey_id][1]
+
+    async def _async_journey_with_fresh_id(self, route_id: str, stale_id: str) -> tuple[str, dict]:
+        route = next((r for r in self.routes if r["id"] == route_id), None)
+        journeys = ((self.data or {}).get(route_id) or {}).get("journeys", [])
+        position = next((i for i, journey in enumerate(journeys) if journey["id"] == stale_id), None)
+        if route is None or position is None:
+            raise ValueError("journey is no longer in the route's results")
+        plans = await self._async_fetch(route)
+        if plans is None or position >= len(plans["journeys"]):
+            raise ValueError("route could not be planned again")
+        fresh_id = plans["journeys"][position]["id"]
+        raw = await self._client.async_journey(fresh_id)
+        # Only now that it worked: hand the card the new ids, so it does not ask with the stale ones again
+        self.data = {**(self.data or {}), route_id: plans}
+        self.async_update_listeners()
+        return fresh_id, raw
 
     def payload(self) -> list[dict]:
         """What the 9292 card receives over the websocket."""

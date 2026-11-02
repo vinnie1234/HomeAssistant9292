@@ -100,7 +100,7 @@ def ws_delete_route(hass: HomeAssistant, connection: websocket_api.ActiveConnect
     connection.send_result(msg["id"])
 
 
-@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/journey", vol.Required("journey_id"): str})
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/journey", vol.Required("journey_id"): str, vol.Optional("route_id"): str})
 @websocket_api.async_response
 async def ws_journey(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     """The legs, stops and route of one journey, for the details in the card."""
@@ -109,7 +109,7 @@ async def ws_journey(hass: HomeAssistant, connection: websocket_api.ActiveConnec
         connection.send_error(msg["id"], "not_loaded", "9292 OV is not loaded")
         return
     try:
-        connection.send_result(msg["id"], await coordinator.async_journey(msg["journey_id"]))
+        connection.send_result(msg["id"], await coordinator.async_journey(msg["journey_id"], msg.get("route_id")))
     except (aiohttp.ClientError, TimeoutError, KeyError, ValueError, TypeError) as err:
         _LOGGER.warning("Could not fetch 9292 journey details: %s: %s", type(err).__name__, err)
         connection.send_error(msg["id"], "fetch_failed", f"{type(err).__name__}: {err}")
