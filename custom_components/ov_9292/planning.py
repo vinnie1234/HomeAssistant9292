@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 import time
 
@@ -29,9 +29,14 @@ from .const import (
     DOMAIN,
     LOCATION_ROWS,
     TIMING_ARRIVAL,
+    TIMING_DEPARTURE,
     TIMING_NOW,
     UPCOMING_LIMIT,
 )
+
+# How far before the time to plan around the earlier journeys are looked for, and how many are kept
+EARLIER_WINDOW = timedelta(minutes=45)
+EARLIER_LIMIT = 2
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -273,4 +278,25 @@ class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
         plans["timing"] = {"mode": mode, "target": target.isoformat() if target else None}
         plans["next"] = next((j for j in plans["journeys"] if not j["cancelled"]), None)
         plans["upcoming"] = plans["journeys"][:UPCOMING_LIMIT]
+        plans["earlier"] = await self._async_earlier(route, mode, target, plans)
         return plans if plans["next"] else None
+
+    async def _async_earlier(self, route: dict, mode: str, target: datetime | None, plans: dict) -> list[dict]:
+        """The journeys that leave before the time to plan around, so there is a choice of leaving a bit earlier.
+
+        Planning around a time lists only what leaves at or after it. For a departure time one more request goes a
+        while earlier; what is not asked for, or fails, gives no earlier journeys.
+        """
+        if mode != TIMING_DEPARTURE or target is None:
+            return []
+        try:
+            before = parse_plans(await self._client.async_plans(route, target - EARLIER_WINDOW, "Departure"))
+        except (aiohttp.ClientError, TimeoutError, KeyError, ValueError) as err:
+            _LOGGER.debug("Could not fetch the earlier 9292 journeys of %s: %s", route["name"], err)
+            return []
+        first = plans["journeys"][0]["departure_actual"] if plans["journeys"] else None
+        earlier = [
+            journey for journey in before["journeys"]
+            if first is not None and journey["departure_actual"] < first and not journey["cancelled"]
+        ]
+        return earlier[-EARLIER_LIMIT:]

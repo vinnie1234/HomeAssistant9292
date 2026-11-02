@@ -46,6 +46,10 @@ def _summary_attributes(result: dict) -> dict:
             {key: journey[key] for key in ("id", "departure_actual", "arrival", "duration_min", "delay_min", "transfers", "legs", "lines", "cancelled")}
             for journey in result["upcoming"]
         ],
+        "earlier": [
+            {key: journey[key] for key in ("id", "departure_actual", "arrival", "duration_min", "delay_min", "transfers", "legs", "lines", "cancelled")}
+            for journey in result.get("earlier", [])
+        ],
     }
 
 
