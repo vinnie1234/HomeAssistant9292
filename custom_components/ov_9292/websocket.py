@@ -6,6 +6,7 @@ attributes, so it subscribes here instead of reading entity states.
 
 from __future__ import annotations
 
+import aiohttp
 import voluptuous as vol
 
 from homeassistant.components import websocket_api
@@ -29,6 +30,21 @@ def _loaded_coordinator(hass: HomeAssistant) -> NineTwoNineTwoCoordinator | None
 @callback
 def async_register_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_subscribe)
+    websocket_api.async_register_command(hass, ws_journey)
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/journey", vol.Required("journey_id"): str})
+@websocket_api.async_response
+async def ws_journey(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+    """The legs, stops and route of one journey, for the details in the card."""
+    coordinator = _loaded_coordinator(hass)
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_loaded", "9292 OV is not loaded")
+        return
+    try:
+        connection.send_result(msg["id"], await coordinator.async_journey(msg["journey_id"]))
+    except (aiohttp.ClientError, TimeoutError, KeyError, ValueError) as err:
+        connection.send_error(msg["id"], "fetch_failed", str(err))
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/subscribe"})

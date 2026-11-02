@@ -104,6 +104,8 @@ actions:
 
 The integration adds the card `custom:ov-9292-card`; it appears in the card picker as *9292 OV*. It shows per route the next departure with delay, arrival, travel time, a strip of the legs (walk, bus, train with line numbers), the following journeys (click one to show its legs) and a map with the start (A) and end (B). *Bekijk op kaart* zooms to a route.
 
+**Reisdetails** expands a journey like on 9292.nl: every stop with planned time (struck through) and real-time (red when late), platform (*Spoor* for trains, *Perron* for buses), the walk with minutes and metres, the transfer time, the bus with its line number and direction, the list of stops, and messages of the operator. For trains only the kind (IC / Sprinter) is shown, not the train number. With the details open the map draws the real route per leg: buses and trains as coloured lines, walking dotted.
+
 ```yaml
 type: custom:ov-9292-card
 show_map: true          # map next to / under the list
@@ -112,12 +114,13 @@ show_upcoming: true     # the following journeys
 max_upcoming: 3         # 1 - 5
 show_person: true       # name and picture of the person on the route
 show_price: false       # price, when 9292 gives one
+show_details: true      # button Reisdetails: stops, platforms, transfers, disruptions
 person: person.vincent  # only routes of this person
 my_routes_only: false   # only routes of the person linked to the logged-in user
 height: 520             # card height in px on wide screens
 ```
 
-All options can also be set in the card editor. The map shows the start and end of the route and a dashed line between them: the journey list from 9292 contains no road geometry.
+All options can also be set in the card editor. Without the details open the map shows the start and end of the route with a dashed line between them; the real route appears when you open *Reisdetails* of the selected route.
 
 If the card does not show after an update, refresh the browser (Ctrl+F5).
 

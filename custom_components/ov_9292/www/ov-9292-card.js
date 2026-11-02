@@ -12,6 +12,7 @@
  *   max_upcoming: 3        # how many following journeys
  *   show_person: true      # name and picture of the person linked to the route
  *   show_price: false      # price of the journey, when 9292 gives one
+ *   show_details: true     # button that expands the journey: stops, platforms, transfers, disruptions
  *   person: person.vincent # only routes of this person
  *   my_routes_only: false  # only routes of the person linked to the logged-in user
  *   height: 520            # card height in px on wide screens
@@ -35,6 +36,11 @@ const MODES = {
 };
 const FALLBACK_MODE = { icon: "mdi:transit-connection-variant", color: "#546e7a", label: "OV" };
 const modeOf = (name) => MODES[name] || FALLBACK_MODE;
+const TRAINS = new Set(["FastTrain", "SlowTrain", "Train"]);
+const TRAIN_LABEL = { FastTrain: "IC", SlowTrain: "Sprinter", Train: "Trein" };
+
+/** What to print on a leg: the line number matters for bus, tram and metro; for trains only the kind. */
+const legText = (leg) => (TRAINS.has(leg.mode) ? TRAIN_LABEL[leg.mode] : leg.line || "");
 
 const STYLE = `
   :host { display: block; color: var(--primary-text-color); }
@@ -88,6 +94,48 @@ const STYLE = `
   .next .muted { color: var(--secondary-text-color); font-weight: 400; }
   .next .mini { display: inline-flex; gap: 2px; --mdc-icon-size: 16px; color: var(--secondary-text-color); }
 
+  .details-toggle { margin-top: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px 4px 6px;
+    border-radius: 14px; border: 1px solid var(--divider-color); background: transparent; color: var(--primary-color); font: inherit;
+    font-size: 12.5px; font-weight: 600; --mdc-icon-size: 18px; }
+  .details-toggle:hover { background: var(--secondary-background-color); }
+
+  .timeline { margin-top: 12px; }
+  .tl { display: grid; grid-template-columns: 52px 22px 1fr; column-gap: 8px; }
+  .tl-time { text-align: right; font-size: 13px; line-height: 1.25; display: flex; flex-direction: column; align-items: flex-end;
+    --mdc-icon-size: 22px; color: var(--secondary-text-color); padding-top: 2px; }
+  .tl-time s { color: var(--secondary-text-color); }
+  .tl-time b.late { color: #ef5350; }
+  .tl-track { position: relative; display: flex; justify-content: center; }
+  .tl-track::before { content: ""; position: absolute; top: 0; bottom: 0; width: 4px; border-radius: 2px; background: var(--c); }
+  .tl.walking .tl-track::before { width: 0; border-left: 3px dotted var(--c); background: none; }
+  .tl.node .tl-track { align-items: flex-start; }
+  .tl.node .tl-track i { position: relative; margin-top: 4px; width: 13px; height: 13px; border-radius: 50%; box-sizing: border-box;
+    background: var(--card-background-color); border: 3px solid var(--c); }
+  .tl.node:last-child .tl-track::before { display: none; }
+  .tl-body { padding: 0 0 8px; min-width: 0; }
+  .tl.node .tl-body { display: flex; justify-content: space-between; gap: 8px; padding-bottom: 6px; font-size: 14px; }
+  .place { font-weight: 600; }
+  .platform { flex: none; font-size: 12.5px; color: var(--secondary-text-color); white-space: nowrap; }
+  .leg-card { padding: 8px 12px; border-radius: 8px; background: var(--secondary-background-color); font-size: 13.5px; }
+  .tl.walking .leg-card { background: transparent; border: 1px solid var(--divider-color); }
+  .tl.cancelled .leg-card { opacity: .6; text-decoration: line-through; }
+  .leg-title { font-weight: 600; }
+  .line-no { display: inline-block; margin-left: 4px; padding: 0 6px; border: 1.5px solid var(--primary-text-color); border-radius: 4px;
+    font-size: 12.5px; font-weight: 700; }
+  .towards { margin-top: 2px; color: var(--primary-color); font-size: 13px; }
+  .muted { color: var(--secondary-text-color); font-weight: 400; }
+  .small { font-size: 12.5px; margin-top: 2px; }
+  .stops { margin-top: 4px; font-size: 12.5px; color: var(--secondary-text-color); }
+  .stops summary { cursor: pointer; }
+  .stop { padding: 2px 0 0 4px; }
+  .stop-time { display: inline-block; width: 44px; color: var(--secondary-text-color); }
+  .disruption { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, #ef5350 14%, transparent);
+    color: #ef5350; font-size: 12.5px; --mdc-icon-size: 18px; }
+  .disruption summary { cursor: pointer; display: flex; gap: 6px; align-items: flex-start; list-style: none; }
+  .disruption summary::-webkit-details-marker { display: none; }
+  .disruption[open] summary { display: none; }
+  .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
   .empty { padding: 28px 16px; text-align: center; color: var(--secondary-text-color); }
   .empty ha-icon { --mdc-icon-size: 40px; opacity: .6; display: block; margin: 0 auto 8px; }
   .unavailable { margin-top: 6px; font-size: 13px; color: var(--secondary-text-color); }
@@ -135,6 +183,85 @@ function loadLeaflet() {
 const esc = (text) =>
   String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const clock = (iso) => new Date(iso).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+const minutesBetween = (from, to) => Math.round((new Date(to) - new Date(from)) / 60000);
+
+/** Planned time struck through with the real-time one in red when they differ, like 9292.nl. */
+function timesHtml(call) {
+  const late = call.real && minutesBetween(call.time, call.real) >= 1;
+  return late
+    ? `<s>${clock(call.time)}</s><b class="late">${clock(call.real)}</b>`
+    : `<b>${clock(call.time)}</b>`;
+}
+
+const platformText = (call) =>
+  call.platform ? `${call.category === "Station" ? "Spoor" : "Perron"} ${esc(call.platform)}` : "";
+
+/** 'Veenendaal Centrum -> 4 Ede' -> '4 Ede': where the vehicle is heading. */
+const heading = (destination) => (destination || "").split("->").pop().trim();
+
+function nodeHtml(call, color) {
+  return `<div class="tl node" style="--c:${color}">
+    <div class="tl-time">${timesHtml(call)}</div>
+    <div class="tl-track"><i></i></div>
+    <div class="tl-body"><span class="place">${esc(call.name)}</span><span class="platform">${platformText(call)}</span></div>
+  </div>`;
+}
+
+function legHtml(leg) {
+  const mode = modeOf(leg.mode);
+  const walking = leg.mode === "Walking";
+  let body;
+  if (walking) {
+    const distance = leg.distance_m ? ` <span class="muted">(${leg.distance_m} m)</span>` : "";
+    body = `<div class="leg-title">${Math.max(minutesBetween(leg.from.time, leg.to.time), 1)} min lopen${distance}</div>`;
+  } else {
+    // For buses and trams the line number is what you look for; for trains only the kind matters
+    const line = !TRAINS.has(leg.mode) && leg.line ? `<span class="line-no">${esc(leg.line)}</span>` : "";
+    const towards = heading(leg.destination);
+    const stops = leg.stops.length
+      ? `<details class="stops"><summary>${leg.stops.length + 1} haltes · ${Math.max(minutesBetween(leg.from.real, leg.to.real), 1)} min</summary>
+          ${[leg.from, ...leg.stops, leg.to]
+            .map((stop) => `<div class="stop"><span class="stop-time">${clock(stop.real || stop.time)}</span>${esc(stop.name)}</div>`)
+            .join("")}</details>`
+      : `<div class="muted small">${Math.max(minutesBetween(leg.from.real, leg.to.real), 1)} min</div>`;
+    const disruptions = leg.disruptions
+      .map((message) => `<details class="disruption"><summary><ha-icon icon="mdi:alert-outline"></ha-icon><span class="clamp">${esc(message)}</span></summary>${esc(message)}</details>`)
+      .join("");
+    body = `<div class="leg-title">${esc(leg.description || mode.label)} ${line}</div>
+      ${towards ? `<div class="towards">Richting ${esc(towards)}</div>` : ""}
+      ${stops}${disruptions}`;
+  }
+  return `<div class="tl legrow ${walking ? "walking" : ""} ${leg.cancelled ? "cancelled" : ""}" style="--c:${mode.color}">
+    <div class="tl-time"><ha-icon icon="${mode.icon}"></ha-icon></div>
+    <div class="tl-track"></div>
+    <div class="tl-body"><div class="leg-card">${body}</div></div>
+  </div>`;
+}
+
+function transferHtml(minutes) {
+  return `<div class="tl legrow walking" style="--c:${MODES.Walking.color}">
+    <div class="tl-time"><ha-icon icon="mdi:timer-sand"></ha-icon></div>
+    <div class="tl-track"></div>
+    <div class="tl-body"><div class="leg-card"><div class="leg-title">${minutes} min overstaptijd</div></div></div>
+  </div>`;
+}
+
+/** The journey step by step: every stop with times and platform, and a card per leg in between. */
+function timelineHtml(detail) {
+  const rows = [];
+  detail.legs.forEach((leg, index) => {
+    const previous = detail.legs[index - 1];
+    if (previous && previous.to.id !== leg.from.id) rows.push(nodeHtml(previous.to, modeOf(leg.mode).color));
+    // Waiting between arriving and the next departure is the transfer time
+    const wait = previous ? minutesBetween(previous.to.real || previous.to.time, leg.from.real || leg.from.time) : 0;
+    if (previous && wait >= 2 && leg.mode !== "Walking") rows.push(transferHtml(wait));
+    rows.push(nodeHtml(leg.from, modeOf(leg.mode).color));
+    rows.push(legHtml(leg));
+  });
+  const last = detail.legs[detail.legs.length - 1];
+  if (last) rows.push(nodeHtml(last.to, modeOf(last.mode).color));
+  return `<div class="timeline">${rows.join("")}</div>`;
+}
 
 class Ov9292Card extends HTMLElement {
   constructor() {
@@ -143,6 +270,8 @@ class Ov9292Card extends HTMLElement {
     this._routes = [];
     this._selectedRoute = null;
     this._picked = new Map(); // route id -> index in route.upcoming chosen by the user
+    this._open = new Set(); // ids of the routes whose journey details are expanded
+    this._details = new Map(); // route id -> { journeyId, data } of the loaded details
   }
 
   setConfig(config) {
@@ -153,6 +282,7 @@ class Ov9292Card extends HTMLElement {
       max_upcoming: 3,
       show_person: true,
       show_price: false,
+      show_details: true,
       my_routes_only: false,
       height: 520,
       ...config,
@@ -225,6 +355,8 @@ class Ov9292Card extends HTMLElement {
     this._showStatus(null);
     this._renderList();
     this._drawRoute();
+    // New data means new journey ids and real-time; refresh what is expanded (the old stays visible meanwhile)
+    for (const id of this._open) this._loadDetails(id);
   }
 
   /** Routes to show: all, those of one person, or those of the logged-in user's person. */
@@ -278,10 +410,13 @@ class Ov9292Card extends HTMLElement {
     $(".list").addEventListener("click", (event) => {
       const show = event.target.closest(".route-show");
       if (show) return this._toggleRoute(show.dataset.route);
+      const toggle = event.target.closest(".details-toggle");
+      if (toggle) return this._toggleDetails(toggle.dataset.route);
       const next = event.target.closest(".next");
       if (next) {
         this._picked.set(next.dataset.route, Number(next.dataset.index));
         this._renderList();
+        if (this._open.has(next.dataset.route)) this._loadDetails(next.dataset.route);
       }
     });
     $(".fit").addEventListener("click", () => this._drawRoute({ fit: true }));
@@ -313,7 +448,7 @@ class Ov9292Card extends HTMLElement {
       const mode = modeOf(leg.mode);
       const walking = leg.mode === "Walking";
       return `<span class="leg ${walking ? "walk" : ""} ${leg.cancelled ? "cancelled" : ""}" style="--leg-color:${mode.color}" title="${esc(mode.label)}">
-        <ha-icon icon="${mode.icon}"></ha-icon>${!walking && leg.line ? esc(leg.line) : ""}</span>`;
+        <ha-icon icon="${mode.icon}"></ha-icon>${walking ? "" : esc(legText(leg))}</span>`;
     });
     return `<div class="legs">${parts.join('<ha-icon class="sep" icon="mdi:chevron-right"></ha-icon>')}</div>`;
   }
@@ -362,8 +497,47 @@ class Ov9292Card extends HTMLElement {
         ${journey.cancelled ? "<span>Vervallen</span>" : ""}
       </div>
       ${this._config.show_legs ? this._legsHtml(journey) : ""}
+      ${this._config.show_details ? this._detailsHtml(route) : ""}
       ${this._config.show_upcoming ? this._upcomingHtml(route, journey) : ""}
     </div>`;
+  }
+
+  /* ---------- journey details ---------- */
+
+  _detailsHtml(route) {
+    const open = this._open.has(route.id);
+    const button = `<button class="details-toggle" data-route="${esc(route.id)}"><ha-icon icon="${open ? "mdi:chevron-up" : "mdi:chevron-down"}"></ha-icon>${open ? "Verberg reisdetails" : "Reisdetails"}</button>`;
+    if (!open) return button;
+    const detail = this._details.get(route.id);
+    let body;
+    if (detail?.error) body = `<div class="unavailable">De reisdetails konden niet geladen worden.</div>`;
+    else if (!detail?.data) body = `<div class="unavailable">Laden…</div>`;
+    else body = timelineHtml(detail.data);
+    return button + body;
+  }
+
+  _toggleDetails(id) {
+    if (this._open.has(id)) this._open.delete(id);
+    else this._open.add(id);
+    this._renderList();
+    if (this._open.has(id)) this._loadDetails(id);
+    this._drawRoute();
+  }
+
+  async _loadDetails(id) {
+    const route = this._routes.find((r) => r.id === id);
+    const journey = route && this._journey(route);
+    if (!journey?.id || !this._hass) return;
+    try {
+      const data = await this._hass.connection.sendMessagePromise({ type: "ov_9292/journey", journey_id: journey.id });
+      this._details.set(id, { journeyId: journey.id, data });
+    } catch (err) {
+      // Keep what is shown when a refresh fails; only show the error when there is nothing yet
+      if (!this._details.get(id)?.data) this._details.set(id, { error: true });
+    }
+    this._renderList();
+    this._drawRoute({ fit: id === this._selectedRoute && !this._fittedDetail?.has(id) });
+    (this._fittedDetail ||= new Set()).add(id);
   }
 
   _renderList() {
@@ -464,15 +638,27 @@ class Ov9292Card extends HTMLElement {
 
     for (const route of routes) {
       const { from, to } = route;
-      if (from.latlong && to.latlong) {
-        // 9292 gives no road geometry in the journey list: a dashed line shows the direction
+      const legs = this._open.has(route.id) ? this._details.get(route.id)?.data?.legs : null;
+      if (legs?.length) {
+        // The real route, per leg in the colour of its mode; walking is dotted
+        for (const leg of legs) {
+          if (leg.path.length < 2) continue;
+          const walking = leg.mode === "Walking";
+          L.polyline(leg.path, { color: "#fff", weight: walking ? 6 : 9, opacity: 0.9, lineCap: "round", interactive: false }).addTo(this._routeLayer);
+          L.polyline(leg.path, { color: modeOf(leg.mode).color, weight: walking ? 4 : 6, opacity: 1, dashArray: walking ? "1 8" : null, lineCap: "round", interactive: false }).addTo(this._routeLayer);
+        }
+      } else if (from.latlong && to.latlong) {
+        // Without the details only the direction is known: a dashed line between start and end
         L.polyline([from.latlong, to.latlong], { color: "#1976d2", weight: 4, opacity: 0.8, dashArray: "2 10", lineCap: "round", interactive: false }).addTo(this._routeLayer);
       }
       if (from.latlong) endpoint(from.latlong, "A", "#2e7d32", from.label);
       if (to.latlong) endpoint(to.latlong, "B", "#c62828", to.label);
     }
     if (fit) {
-      const points = this._points(routes);
+      const detailPoints = routes.flatMap((route) =>
+        this._open.has(route.id) ? (this._details.get(route.id)?.data?.legs || []).flatMap((leg) => leg.path) : []
+      );
+      const points = detailPoints.length ? detailPoints : this._points(routes);
       if (points.length) this._map.flyToBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 13, duration: 0.7 });
     }
   }
@@ -485,6 +671,7 @@ const EDITOR_SCHEMA = [
   { name: "max_upcoming", selector: { number: { min: 1, max: 5, step: 1, mode: "slider" } } },
   { name: "show_person", selector: { boolean: {} } },
   { name: "show_price", selector: { boolean: {} } },
+  { name: "show_details", selector: { boolean: {} } },
   { name: "my_routes_only", selector: { boolean: {} } },
   { name: "person", selector: { entity: { domain: "person" } } },
   { name: "height", selector: { number: { min: 300, max: 1400, step: 10, mode: "slider", unit_of_measurement: "px" } } },
@@ -496,6 +683,7 @@ const EDITOR_LABELS = {
   max_upcoming: "Aantal volgende reizen",
   show_person: "Persoon bij de route tonen",
   show_price: "Prijs tonen",
+  show_details: "Knop Reisdetails tonen (haltes, perrons, overstappen, storingen)",
   my_routes_only: "Alleen mijn routes (de persoon die bij jouw gebruiker hoort)",
   person: "Alleen routes van deze persoon (leeg = alle routes)",
   height: "Hoogte van de kaart op brede schermen",
@@ -507,6 +695,7 @@ const EDITOR_DEFAULTS = {
   max_upcoming: 3,
   show_person: true,
   show_price: false,
+  show_details: true,
   my_routes_only: false,
   height: 520,
 };

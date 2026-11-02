@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
+import time
 
 import aiohttp
 
@@ -13,7 +14,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .api import NineTwoNineTwoClient
+from .api import NineTwoNineTwoClient, parse_lat_long
+from .geometry import parse_linestring, simplify_path
 from .const import (
     CONF_ROUTES,
     CONF_SCAN_INTERVAL,
@@ -25,6 +27,8 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 WALKING = "Walking"
+# Seconds a journey's details are reused; the card asks again when the real-time data may have changed
+DETAIL_TTL = 60
 
 
 def _minutes_between(start: str | None, end: str | None) -> int:
@@ -52,6 +56,8 @@ def parse_journey(preview: dict) -> dict:
     # Without a real-time departure the planned time is all there is
     actual = preview.get("departureRealTime") or planned
     return {
+        # Opaque id the details of this journey are fetched with
+        "id": preview.get("id"),
         "departure": planned,
         "departure_actual": actual,
         "arrival": preview["arrivalTime"],
@@ -79,6 +85,55 @@ def parse_plans(raw: dict) -> dict:
     }
 
 
+def _call(call: dict) -> dict:
+    """A stop of a leg: where, when planned, when real-time, and the platform."""
+    return {
+        "id": call.get("id"),
+        "name": call.get("displayName"),
+        "category": call.get("category"),
+        "time": call.get("time"),
+        "real": call.get("realTime") or call.get("time"),
+        "platform": call.get("platform"),
+        "latlong": parse_lat_long((call.get("location") or {}).get("latLong")),
+    }
+
+
+def _disruptions(leg: dict) -> list[str]:
+    """Messages of the operator for this leg. The API's own title lists every affected place, so it is left out."""
+    messages = []
+    for disruption in leg.get("disruptions", []):
+        message = disruption.get("operatorMessage") or " ".join(
+            part
+            for part in (disruption.get("effect"), disruption.get("measure"), disruption.get("advice"))
+            if part
+        )
+        if message and message not in messages:
+            messages.append(message.strip())
+    return messages
+
+
+def parse_detail(raw: dict) -> dict:
+    """The legs of one journey with stops, platforms, real-time, disruptions and the route on the map."""
+    legs = []
+    for leg in raw.get("legs", []):
+        legs.append(
+            {
+                "mode": leg.get("icon"),
+                "description": leg.get("modalityDescription"),
+                "line": leg.get("service") or None,
+                "destination": leg.get("destination") or None,
+                "from": _call(leg["departureCall"]),
+                "to": _call(leg["arrivalCall"]),
+                "stops": [_call(stop) for stop in leg.get("stops", [])],
+                "distance_m": (leg.get("route") or {}).get("distance"),
+                "disruptions": _disruptions(leg),
+                "cancelled": leg.get("status") == "Cancelled",
+                "path": simplify_path(parse_linestring((leg.get("route") or {}).get("routeGeometry"))),
+            }
+        )
+    return {"legs": legs, "duration_min": raw.get("durationInMinutes"), "changes": raw.get("numberOfChanges")}
+
+
 def _end(route: dict, end: str) -> dict:
     """One end of a route as the card needs it; routes made before the search have no label."""
     return {
@@ -95,6 +150,7 @@ class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
         options = {**entry.data, **entry.options}
         self.routes: list[dict] = options.get(CONF_ROUTES, [])
         self._client = NineTwoNineTwoClient(async_get_clientsession(hass))
+        self._details: dict[str, tuple[float, dict]] = {}
         super().__init__(
             hass,
             _LOGGER,
@@ -104,6 +160,14 @@ class NineTwoNineTwoCoordinator(DataUpdateCoordinator[dict[str, dict | None]]):
             if self.routes
             else None,
         )
+
+    async def async_journey(self, journey_id: str) -> dict:
+        """Details of one journey, fetched when the card asks for it and kept briefly."""
+        now = time.monotonic()
+        self._details = {key: value for key, value in self._details.items() if now - value[0] < DETAIL_TTL}
+        if journey_id not in self._details:
+            self._details[journey_id] = (now, parse_detail(await self._client.async_journey(journey_id)))
+        return self._details[journey_id][1]
 
     def payload(self) -> list[dict]:
         """What the 9292 card receives over the websocket."""

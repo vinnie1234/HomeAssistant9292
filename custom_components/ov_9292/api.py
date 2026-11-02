@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import time
 from datetime import datetime, timezone
-from urllib.parse import quote_plus
+from urllib.parse import quote, quote_plus
 
 import aiohttp
 from yarl import URL
@@ -93,19 +93,24 @@ class NineTwoNineTwoClient:
         raw = await self._get("locations", {"query": query, "rows": str(rows)})
         return raw.get("locations", [])
 
+    async def async_journey(self, journey_id: str) -> dict:
+        """The legs, stops and route of one journey from the plans response."""
+        return await self._get(f"journey/{quote(journey_id, safe='')}", {})
+
     async def _get(self, endpoint: str, params: dict[str, str]) -> dict:
         path = f"/api/v1/{endpoint}"
-        query = encode_query(params)
+        # Without parameters the web app signs the bare path, without a '?'
+        signed_path = f"{path}?{encode_query(params)}" if params else path
         request_time = int(time.time() * 1000)
         headers = {
             **HEADERS,
             "x-request-time": str(request_time),
-            "x-validation-token": sign(request_time, f"{path}?{query}"),
+            "x-validation-token": sign(request_time, signed_path),
         }
         # encoded=True: aiohttp must send the query exactly as signed (it would otherwise
         # turn %2F and %3A back into "/" and ":", which changes the signature)
         async with self._session.get(
-            URL(f"{API_BASE_URL}{path}?{query}", encoded=True), headers=headers, timeout=REQUEST_TIMEOUT
+            URL(f"{API_BASE_URL}{signed_path}", encoded=True), headers=headers, timeout=REQUEST_TIMEOUT
         ) as response:
             response.raise_for_status()
             return await response.json()
