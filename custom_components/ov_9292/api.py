@@ -27,7 +27,6 @@ HEADERS = {
     "origin": "https://9292.nl",
     "referer": "https://9292.nl/",
     "user-agent": USER_AGENT,
-    "x-origin": "Plan",
 }
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
@@ -89,7 +88,7 @@ class NineTwoNineTwoClient:
         self, route: dict, when: datetime | None = None, request_type: str = "Departure"
     ) -> dict:
         """The raw plans response for a route; departing now unless a time is given."""
-        return await self._get("plans", plan_params(route, when, request_type))
+        return await self._get("plans", plan_params(route, when, request_type), origin="Plan")
 
     async def async_locations(self, query: str, rows: int = 10) -> list[dict]:
         """Places, stations and stops matching the text, as 9292.nl suggests them."""
@@ -98,15 +97,17 @@ class NineTwoNineTwoClient:
 
     async def async_journey(self, journey_id: str) -> dict:
         """The legs, stops and route of one journey from the plans response."""
-        return await self._get(f"journey/{quote(journey_id, safe='')}", {})
+        return await self._get(f"journey/{quote(journey_id, safe='')}", {}, origin="Journey")
 
-    async def _get(self, endpoint: str, params: dict[str, str]) -> dict:
+    async def _get(self, endpoint: str, params: dict[str, str], origin: str | None = None) -> dict:
+        """origin is the x-origin the web app sends from that page; the location search sends none."""
         path = f"/api/v1/{endpoint}"
         # Without parameters the web app signs the bare path, without a '?'
         signed_path = f"{path}?{encode_query(params)}" if params else path
         request_time = int(time.time() * 1000)
         headers = {
             **HEADERS,
+            **({"x-origin": origin} if origin else {}),
             "x-request-time": str(request_time),
             "x-validation-token": sign(request_time, signed_path),
         }
