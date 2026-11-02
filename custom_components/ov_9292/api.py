@@ -116,5 +116,10 @@ class NineTwoNineTwoClient:
         async with self._session.get(
             URL(f"{API_BASE_URL}{signed_path}", encoded=True), headers=headers, timeout=REQUEST_TIMEOUT
         ) as response:
-            response.raise_for_status()
+            if response.status >= 400:
+                # 9292 explains a refusal in the body; raise_for_status alone only says "Bad Request"
+                detail = (await response.text())[:500]
+                raise aiohttp.ClientResponseError(
+                    response.request_info, response.history, status=response.status, message=detail
+                )
             return await response.json()
