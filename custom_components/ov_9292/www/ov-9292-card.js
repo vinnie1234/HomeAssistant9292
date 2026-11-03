@@ -386,6 +386,8 @@ class Ov9292Card extends HTMLElement {
   }
 
   connectedCallback() {
+    this._onShowRoute = () => this._showRequestedRoute();
+    window.addEventListener("ov-9292-show-route", this._onShowRoute);
     if (this._hass && !this._unsub) this._subscribe();
     this._resizeObserver = new ResizeObserver(() => {
       this._root?.classList.toggle("wide", this.clientWidth >= WIDE_BREAKPOINT);
@@ -395,6 +397,7 @@ class Ov9292Card extends HTMLElement {
   }
 
   disconnectedCallback() {
+    window.removeEventListener("ov-9292-show-route", this._onShowRoute);
     this._resizeObserver?.disconnect();
     this._unsubscribe();
   }
@@ -426,6 +429,7 @@ class Ov9292Card extends HTMLElement {
     this._showStatus(null);
     this._renderList();
     this._drawRoute();
+    this._showRequestedRoute();
     // New data means new journey ids and real-time; refresh what is expanded (the old stays visible meanwhile)
     for (const id of this._open) this._loadDetails(id);
   }
@@ -626,6 +630,23 @@ class Ov9292Card extends HTMLElement {
     list.innerHTML = routes.length
       ? routes.map((route) => this._routeHtml(route)).join("") + add
       : `<div class="empty"><ha-icon icon="mdi:train-bus"></ha-icon>Geen routes.${this._canEdit() ? "" : " Voeg een route toe via de integratie-instellingen."}</div>${add}`;
+  }
+
+  /**
+   * A dashboard can ask for a route to be shown: set window.ov9292ShowRoute = { slug: "thuis_nijmegen", person: "person.x" } (the name
+   * of the route in lower case with underscores) and fire an "ov-9292-show-route" event on window, or open the card after setting it.
+   * The route is selected and the map zooms to it; the request is used once.
+   */
+  _showRequestedRoute() {
+    const wanted = window.ov9292ShowRoute;
+    if (!wanted || !this._routes.length) return;
+    const slug = (name) => String(name).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    const route = this._routes.find((r) => slug(r.name) === wanted.slug && (!wanted.person || r.person === wanted.person));
+    if (!route) return;
+    window.ov9292ShowRoute = null;
+    this._selectedRoute = route.id;
+    this._renderList();
+    this._drawRoute({ fit: true });
   }
 
   _toggleRoute(id) {
