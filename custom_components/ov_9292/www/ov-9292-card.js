@@ -645,12 +645,20 @@ class Ov9292Card extends HTMLElement {
     if (!route) return;
     window.ov9292ShowRoute = null;
     this._selectedRoute = route.id;
+    this._showJourney(route.id);
     this._renderList();
     this._drawRoute({ fit: true });
   }
 
+  /** Shows the real route of the journey on the map (the legs along the tracks and roads) instead of a line from A to B. */
+  _showJourney(id) {
+    this._open.add(id);
+    this._loadDetails(id);
+  }
+
   _toggleRoute(id) {
     this._selectedRoute = this._selectedRoute === id ? null : id;
+    if (this._selectedRoute) this._showJourney(id);
     this._renderList();
     this._drawRoute({ fit: true });
     if (this._selectedRoute && !this._root.classList.contains("wide")) {
