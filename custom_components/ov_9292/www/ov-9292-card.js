@@ -430,6 +430,14 @@ class Ov9292Card extends HTMLElement {
     this._renderList();
     this._drawRoute();
     this._showRequestedRoute();
+    // The details of every route are open from the start (the map then shows the real journeys, not lines from A to B);
+    // a route the user closes stays closed
+    this._autoOpened ||= new Set();
+    for (const route of this._visibleRoutes()) {
+      if (this._autoOpened.has(route.id)) continue;
+      this._autoOpened.add(route.id);
+      this._open.add(route.id);
+    }
     // New data means new journey ids and real-time; refresh what is expanded (the old stays visible meanwhile)
     for (const id of this._open) this._loadDetails(id);
   }
