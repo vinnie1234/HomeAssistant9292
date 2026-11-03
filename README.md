@@ -1,12 +1,15 @@
 # 9292 OV
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
+
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=vinnie1234&repository=HomeAssistant9292&category=integration)
+[![Add the integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=ov_9292)
 
 Public transport journeys from **9292** in Home Assistant: the next departure, arrival, travel time, delay and transfers between two places, linked to a person, plus a card with the legs of the journey and a map.
 
 ## Setup
 
-1. Install via HACS (custom repository, category *Integration*) and restart Home Assistant.
+1. Open **HACS**, search for **9292 OV** and choose **Download**, then restart Home Assistant. (Or use the *Open in HACS* button above.)
 2. **Settings → Devices & Services → Add integration → 9292 OV**, choose the refresh interval.
 3. Open **Configure** on the integration and choose **Add a route**.
 
