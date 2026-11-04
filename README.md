@@ -7,6 +7,17 @@
 
 Public transport journeys from **9292** in Home Assistant: the next departure, arrival, travel time, delay and transfers between two places, linked to a person, plus a card with the legs of the journey and a map.
 
+## Screenshots
+
+| | |
+|---|---|
+| ![Overview](docs/screenshots/overview.jpg) | ![A route with the journey details](docs/screenshots/route.jpg) |
+| *Two routes, each with its person, the next departure with delay and the following journeys* | *A route selected: the journey step by step with stops, platforms and a disruption, and the real route on the map* |
+
+![Dark theme](docs/screenshots/dark.jpg)
+
+*Screenshots use made-up routes and a test page; the layout in Home Assistant follows your theme.*
+
 ## Setup
 
 1. Open **HACS**, search for **9292 OV** and choose **Download**, then restart Home Assistant. (Or use the *Open in HACS* button above.)
