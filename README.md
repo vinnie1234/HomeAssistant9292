@@ -79,7 +79,9 @@ Attributes of the **Lines** sensor:
 | `lines`, `operators`, `modes` | `["83", "3245"]`, `["RRReis", "NS"]`, `["Bus", "FastTrain"]` |
 | `price`, `occupancy`, `detour` | `13.32`, `2`, `false` |
 | `person` | `person.vincent` |
-| `upcoming` | The next 5 journeys with `departure_actual`, `arrival`, `duration_min`, `delay_min`, `transfers`, `legs`, `lines`, `cancelled` |
+| `id`, `route_id` | The id of this journey and of the route, to ask for its details (stops, platforms) through the `ov_9292/journey` websocket command |
+| `upcoming` | The next 5 journeys with `id`, `departure_actual`, `arrival`, `duration_min`, `delay_min`, `transfers`, `legs`, `lines`, `cancelled` |
+| `earlier` | Only for *Leave at a certain time*: up to 2 journeys that leave within 45 minutes before that time (same fields as `upcoming`), for when you want to leave a bit earlier |
 
 Entity ids follow the device and sensor names, for example `sensor.9292_work_vincent_departure`. Check the exact ids under **Settings → Devices & Services → 9292 OV**.
 
@@ -133,9 +135,9 @@ actions:
 
 ## The card
 
-The integration adds the card `custom:ov-9292-card`; it appears in the card picker as *9292 OV*. It shows per route the next departure with delay, arrival, travel time, a strip of the legs (walk, bus, train with line numbers), the following journeys (click one to show its legs) and a map with the start (A) and end (B). *Bekijk op kaart* zooms to a route.
+The integration adds the card `custom:ov-9292-card`; it appears in the card picker as *9292 OV*. It shows per route the next departure with delay, arrival, travel time, a strip of the legs (walk, bus, train with line numbers), the following journeys (click one to show its legs) and a map with the start (A) and end (B). *Bekijk op kaart* selects a route and zooms the map to its real journey. The texts of the card are in Dutch.
 
-**Reisdetails** expands a journey like on 9292.nl: every stop with planned time (struck through) and real-time (red when late), platform (*Spoor* for trains, *Perron* for buses), the walk with minutes and metres, the transfer time, the bus with its line number and direction, the list of stops, and messages of the operator. For trains only the kind (IC / Sprinter) is shown, not the train number. With the details open the map draws the real route per leg: buses and trains as coloured lines, walking dotted.
+**Reisdetails** expands a journey like on 9292.nl, and is open from the start for every route (close it with the button; it stays closed until the page is reloaded): every stop with planned time (struck through) and real-time (red when late), platform (*Spoor* for trains, *Perron* for buses), the walk with minutes and metres, the transfer time, the bus with its line number and direction, the list of stops, and messages of the operator. For trains only the kind (IC / Sprinter) is shown, not the train number. The map draws the real route per leg: buses and trains as coloured lines, walking dotted.
 
 ```yaml
 type: custom:ov-9292-card
@@ -152,11 +154,21 @@ my_routes_only: false   # only routes of the person linked to the logged-in user
 height: 520             # card height in px on wide screens
 ```
 
-All options can also be set in the card editor. Without the details open the map shows the start and end of the route with a dashed line between them; the real route appears when you open *Reisdetails* of the selected route.
+All options can also be set in the card editor. When the details of a route are closed, the map shows only its start and end with a dashed line between them.
+
+### Showing a route from another dashboard card
+
+A dashboard can ask the card to select a route and zoom the map to it, for example from a button or a custom card. Set `window.ov9292ShowRoute` before opening the card, or while it is open and then fire the event `ov-9292-show-route` on `window`:
+
+```js
+window.ov9292ShowRoute = { slug: "thuis_nijmegen", person: "person.vincent" };
+window.dispatchEvent(new Event("ov-9292-show-route"));
+```
+
+`slug` is the name of the route in lower case with underscores instead of other characters (`Thuis -> Nijmegen` becomes `thuis_nijmegen`); `person` is optional and picks the route of that person when several have the same name. The request is used once.
 
 If the card does not show after an update, refresh the browser (Ctrl+F5).
 
 ## Notes
 
 - The integration uses the same unofficial API as 9292.nl, including the request signature its website sends. It can stop working if 9292 changes that; there is no official support.
-- Routes made before places could be searched keep working but show the 9292 id as name and have no marker on the map until you edit them and search the places again.

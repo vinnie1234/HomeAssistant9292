@@ -3,7 +3,7 @@ from pathlib import Path
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_state_change_event
@@ -66,12 +66,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     if coordinator.time_entities:
+
+        # @callback keeps this on the event loop; a plain function would run in an executor thread,
+        # where creating a task is not allowed
+        @callback
+        def _time_entity_changed(_event: Event) -> None:
+            hass.async_create_task(coordinator.async_request_refresh())
+
         entry.async_on_unload(
-            async_track_state_change_event(
-                hass,
-                coordinator.time_entities,
-                lambda _event: hass.async_create_task(coordinator.async_request_refresh()),
-            )
+            async_track_state_change_event(hass, coordinator.time_entities, _time_entity_changed)
         )
 
     _remove_deleted_route_devices(hass, entry, coordinator)
