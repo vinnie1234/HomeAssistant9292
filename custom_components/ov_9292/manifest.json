@@ -4,6 +4,7 @@
   "codeowners": [
     "@vinnie1234"
   ],
+  "categories": ["vehicles_transport.public_transport"],
   "config_flow": true,
   "dependencies": [
     "frontend",
@@ -15,5 +16,5 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/vinnie1234/HomeAssistant9292/issues",
   "requirements": [],
-  "version": "0.5.2"
+  "version": "0.5.3"
 }
